@@ -1,17 +1,15 @@
 # termline.nvim
 
 A hacky neovim API for reading, clearing, and writing the active command in a `:terminal` buffer.
-Also includes bundled editors wired to that API. Default is the prompt editor.
+Also includes bundled editors wired to that API.
 
-## User Commands
+#### `prompt` editor demo
 
-User commands target the current terminal buffer.
+https://github.com/user-attachments/assets/71864d1e-9fc7-4875-9b6c-910e9a6bef4d
 
-```vim
-:TermReadCommand
-:TermWriteCommand echo hello
-:TermClearCommand
-```
+#### `editable` editor demo
+
+https://github.com/user-attachments/assets/fe20e2f0-296c-4b43-89d5-2e16b5872e44
 
 ## Editor usage
 
@@ -19,7 +17,7 @@ User commands target the current terminal buffer.
 require("termline").setup()
 ```
 
-Press `<Esc>` on a terminal buffer.
+Press `<Esc>` on a terminal buffer to open the editor.
 
 ## Config
 
@@ -69,10 +67,10 @@ require("termline").setup({
 })
 ```
 
-`editor.type = nil` leaves the API loaded without any editor.
-`editor.type = "overlay"` uses a floating buffer without the shell prompt.
-`editor.type = "prompt"` is the default. `overlay` with prompt included in the window.
-`editor.type = "integrated"` is an in-place editor for the terminal buffer.
+- `editor.type = nil` leaves the API loaded without any editor.
+- `editor.type = "overlay"` uses a floating buffer without the shell prompt.
+- `editor.type = "prompt"` same as `overlay` but with prompt included in the window.
+- `editor.type = "integrated"` is an in-place editor for the terminal buffer.
 
 ## API
 
@@ -91,6 +89,16 @@ termline.write_command("echo hello", buf)
 ```
 
 See `./termline.nvim/lua/termline/editors/overlay.lua` for usage example.
+
+## User Commands
+
+User commands target the current terminal buffer.
+
+```vim
+:TermReadCommand
+:TermWriteCommand echo hello
+:TermClearCommand
+```
 
 ## User Autocommands
 
