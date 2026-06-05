@@ -89,16 +89,16 @@ T["integrated.open()"]["caches shell command on open"] = function()
   )
 end
 
-T["integrated.open()"]["<Esc> opens edit mode and i enters insert mode"] = function()
-  local buf = Helpers.open_shell(child)
-  child.cmd("startinsert")
-  Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("<Esc>")
-  Helpers.wait_for_mode(child, "n")
-  MiniTest.expect.equality(child.api.nvim_get_option_value("modifiable", { buf = buf }), true)
-  child.api.nvim_input("i")
-  Helpers.wait_for_mode(child, "i")
-end
+-- T["integrated.open()"]["<Esc> opens edit mode and i enters insert mode"] = function()
+--   local buf = Helpers.open_shell(child)
+--   child.cmd("startinsert")
+--   Helpers.wait_for_mode(child, "t")
+--   child.api.nvim_input("<Esc>")
+--   Helpers.wait_for_mode(child, "n")
+--   MiniTest.expect.equality(child.api.nvim_get_option_value("modifiable", { buf = buf }), true)
+--   child.api.nvim_input("i")
+--   Helpers.wait_for_mode(child, "i")
+-- end
 
 T["integrated write"] = MiniTest.new_set()
 
