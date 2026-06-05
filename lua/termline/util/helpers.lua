@@ -1,0 +1,72 @@
+local M = {}
+
+---@param keys string
+---@return string
+function M.term_codes(keys)
+  return vim.api.nvim_replace_termcodes(keys, true, false, true)
+end
+
+---@param buf integer
+---@return integer
+local function assert_terminal_channel(buf)
+  local chan = vim.bo[buf].channel
+  if not chan or chan == 0 then
+    error("termline: missing terminal channel")
+  end
+  return chan
+end
+
+---@param bytes string
+---@param buf? integer
+function M.send_bytes(bytes, buf)
+  local target = M.current_buf(buf)
+  M.assert_terminal(target)
+  vim.api.nvim_chan_send(assert_terminal_channel(target), bytes)
+end
+
+---@param keys string
+---@param buf? integer
+function M.send_keys(keys, buf)
+  M.send_bytes(M.term_codes(keys), buf)
+end
+
+---@param command string
+---@param patterns string[]
+---@param replacement? string
+---@return string
+function M.strip_patterns(command, patterns, replacement)
+  replacement = replacement or ""
+  for _, pattern in ipairs(patterns) do
+    command = command:gsub(pattern, replacement)
+  end
+  return command
+end
+
+---@param buf? integer
+---@return integer
+function M.current_buf(buf)
+  return buf or vim.api.nvim_get_current_buf()
+end
+
+---@param buffers table<integer, table>
+---@param buf integer
+---@return table
+function M.ensure_buffer_state(buffers, buf)
+  buffers[buf] = buffers[buf]
+    or {
+      prompt = nil,
+      prompt_end_cursor = nil,
+      shell_state = { command = "", cursor = nil },
+      target_state = nil,
+    }
+  return buffers[buf]
+end
+
+---@param buf integer
+function M.assert_terminal(buf)
+  if vim.bo[buf].buftype ~= "terminal" then
+    error("termline: current buffer is not a terminal")
+  end
+end
+
+return M

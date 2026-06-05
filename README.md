@@ -1,0 +1,154 @@
+# termline.nvim
+
+A hacky neovim API for reading, clearing, and writing the active command in a `:terminal` buffer.
+Also includes bundled editors wired to that API. Default is the prompt editor.
+
+## User Commands
+
+User commands target the current terminal buffer.
+
+```vim
+:TermReadCommand
+:TermWriteCommand echo hello
+:TermClearCommand
+```
+
+## Editor usage
+
+```lua
+require("termline").setup()
+```
+
+Press `<Esc>` on a terminal buffer.
+
+## Config
+
+Defaults live in `lua/termline/config.lua`.
+
+```lua
+require("termline").setup({
+  -- Keys sent by clear_command to clear the current line.
+  clear_current_line = "<C-u>",
+  -- Max wait after clear_current_line before checking whether the command was cleared.
+  clear_current_line_wait_ms = 20,
+  -- Max wait for the shell to emit a fresh prompt after an interrupt.
+  prompt_refresh_wait_ms = 50,
+  -- Patterns stripped from command text when reading input.
+  read_strip_patterns = { "\\n", "\n> ?", "^%s+$", "%s%s+$" },
+  -- Patterns stripped from command text before sending it back to the terminal.
+  write_strip_patterns = { "\n" },
+  -- Ctrl-C is used to clear the line if any of these match the command.
+  ctrl_c_on = { "\n> ?" },
+  editor = {
+    -- nil means API-only, "prompt" enables the default overlay editor.
+    -- "editable" applies edits to terminal buffer directly.
+    type = "prompt",
+    -- Global normal-mode mapping for the editor command. Set false to disable.
+    open = "<Esc>",
+    -- Open the editor when a new OSC133 ]133;B is detected.
+    open_on_prompt = false,
+    -- Sync editor text, close, then pass these keys to the terminal in insert mode.
+    pass_through_insert_keys = { "<Up>", "<Tab>" },
+    -- Sync text, close, then replay these in normal mode.
+    pass_through_normal_keys = { "}", "<C-d>", "<C-b>", "<C-f>", "G", "L" },
+    -- Only on the first overlay line, sync text, close, then replay these in normal mode.
+    pass_through_normal_keys_first_line = { "{", "<C-u>", "gg", "H" },
+    keys = {
+      ["<CR>"] = { action = "submit", mode = { "n", "i" } },
+      ["<C-u>"] = { action = "clear", mode = { "n", "i" } },
+      ["<C-s>"] = { action = "write", mode = { "n", "i" } },
+      ["<C-f>"] = { action = "save_and_close", mode = { "n", "i" } },
+      ["<Esc>"] = { action = "save_and_close", mode = { "n" } },
+      ["q"] = { action = "close", mode = { "n" } },
+      ["j"] = { action = "down", mode = { "n", "x", "o" } },
+      ["k"] = { action = "up", mode = { "n", "x", "o" } },
+    },
+  },
+  -- true: vim.notify debug events. function(event, data): custom logger.
+  debug = false,
+})
+```
+
+`editor.type = nil` leaves the API loaded without any editor.
+`editor.type = "overlay"` uses a floating buffer without the shell prompt.
+`editor.type = "prompt"` is the default. `overlay` with prompt included in the window.
+`editor.type = "integrated"` is an in-place editor for the terminal buffer.
+
+## API
+
+- `api.read_command` reads text starting from last `OSC133;B` marker.
+- `api.clear_command` sends `clear_current_line` with a `C-c` fallback if the command stays non-empty.
+- `api.write_command` chansends the given command text. 
+- `api.sync_state` clears and writes changed command text, and moves the cursor when `target.cursor` is set.
+
+
+```lua
+local termline = require("termline.api")
+local buf = vim.api.nvim_get_current_buf()
+local command = termline.read_command(buf)
+termline.clear_command(buf)
+termline.write_command("echo hello", buf)
+```
+
+See `./termline.nvim/lua/termline/editors/overlay.lua` for usage example.
+
+## User Autocommands
+
+#### `User termline-open-on-prompt` after a terminal `OSC133;B`
+prompt marker is seen.
+`args.data` contains:
+- `buf`: terminal buffer handle
+- `cursor`: `{ row, col }` from the `TermRequest` event. `row` is the 1-based
+  terminal line. `col` is the 0-based byte column right after the prompt, so it
+  points at the first command character position.
+
+See `./termline.nvim/lua/termline/editors/overlay.lua` for usage example.
+
+#### `User termline-prompt-updated` after the cached prompt text has been refreshed. 
+`args.data` contains:
+- `buf`: terminal buffer handle
+- `cursor`: `{ row, col }` from the `TermRequest` event
+- `prompt`: cached prompt text
+
+Example TBD
+
+## Terms
+
+- Command: full editable command text, can contain multiple lines.
+- Command row: one line in a command.
+- Prompt: shell text shown before the command.
+- OSC133: terminal escape sequence used to find where the prompt ends and command starts.
+
+## Buffer Cache
+
+Per-terminal state is cached in an internal Lua table, keyed by the existing terminal buffer handle.
+- `prompt`: cached prompt text.
+- `prompt_end_cursor`: `{ row, col }` at the prompt/command boundary from `OSC133;B`.
+- `shell_state`: shell-side `{ command, cursor }` state. What the shell program thinks the state is.
+- `target_state`: target `{ command, cursor }` state, used by the integrated editor to restore
+state in some cases where terminal writes to the terminal buffer.
+
+## Completions
+
+Bundled editors set `vim.bo.filetype = "termline"`.
+Use that filetype to set custom completions for the editor buffer.
+
+Blink example:
+
+```lua
+require("blink.cmp").setup({
+  sources = {
+    per_filetype = {
+      ["termline"] = { "path", "snippets" },
+    },
+  },
+})
+```
+
+## Hints
+
+You can add a small delay between write and close to hide `chansend()` jitter.
+
+## [Known issues/Planned features/Roadmap/TODO](/doc/todo.md)
+
+## [Related projects](/doc/related-projects.md)
