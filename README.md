@@ -1,5 +1,8 @@
 # termline.nvim
 
+> [!NOTE]
+> WIP. Expect bugs.
+
 Edit the current terminal command in Neovim.
 
 `termline.nvim` provides an API for reading, writing, and syncing the current
