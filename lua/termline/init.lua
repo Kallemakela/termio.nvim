@@ -28,11 +28,14 @@ local function create_autocmds()
     group = vim.api.nvim_create_augroup("termline-osc133", { clear = true }),
     callback = function(args)
       -- OSC133 sequences: A prompt start, B prompt end, C pre-exec, D command finish.
-      -- Only B marks the editable command start for later autocmds.
+      local state = helpers.ensure_buffer_state(api.buffers, args.buf)
+      if args.data.sequence:match("^\27]133;A") then
+        state.prompt_start_cursor = args.data.cursor
+        return
+      end
       if not args.data.sequence:match("^\27]133;B") then
         return
       end
-      local state = helpers.ensure_buffer_state(api.buffers, args.buf)
       state.prompt_end_cursor = args.data.cursor
       -- HACK: TermRequest arrives before the terminal buffer line shows the new prompt text.
       vim.defer_fn(function()

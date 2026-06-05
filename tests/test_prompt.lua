@@ -13,6 +13,33 @@ T = MiniTest.new_set({
 
 T["prompt.open()"] = MiniTest.new_set()
 
+T["prompt.open()"]["renders prompt between OSC133;A and OSC133;B"] = function()
+  local prompt = "$ "
+
+  child.cmd("terminal true")
+  local buf = child.api.nvim_get_current_buf()
+  child.api.nvim_set_option_value("modifiable", true, { buf = buf })
+  child.api.nvim_buf_set_lines(buf, 0, -1, false, { "noise" .. prompt .. "echo hello" })
+  child.api.nvim_exec_autocmds("TermRequest", {
+    buffer = buf,
+    modeline = false,
+    data = { sequence = "\27]133;A;cl=line", cursor = { 1, 5 } },
+  })
+  child.api.nvim_exec_autocmds("TermRequest", {
+    buffer = buf,
+    modeline = false,
+    data = { sequence = "\27]133;B", cursor = { 1, 7 } },
+  })
+  Helpers.wait_until(child, function()
+    return child.lua_get([[require("termline").buffers[...].prompt]], { buf }) == prompt
+  end)
+  child.lua([[require("termline.editors.prompt").open(...)]], {
+    { target_buf = buf, target_win = child.api.nvim_get_current_win() },
+  })
+
+  MiniTest.expect.equality(child.api.nvim_get_current_line(), prompt .. "echo hello")
+end
+
 T["prompt.open()"]["renders prompt from terminal state"] = function()
   local prompt = "$ "
   local buf = Helpers.open_shell(child, prompt)

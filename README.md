@@ -139,6 +139,7 @@ Example TBD
 
 Per-terminal state is cached in an internal Lua table, keyed by the existing terminal buffer handle.
 - `prompt`: cached prompt text.
+- `prompt_start_cursor`: `{ row, col }` at the prompt start from `OSC133;A`.
 - `prompt_end_cursor`: `{ row, col }` at the prompt/command boundary from `OSC133;B`.
 - `shell_state`: shell-side `{ command, cursor }` state. What the shell program thinks the state is.
 - `target_state`: target `{ command, cursor }` state, used by the integrated editor to restore

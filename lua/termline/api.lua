@@ -4,15 +4,28 @@ local helpers = require("termline.util.helpers")
 
 M.buffers = {}
 
----Return OSC133 prompt position for the current editable command.
+---Return OSC133 prompt range for the current editable command.
 ---@param buf integer
----@return integer, integer
-local function assert_osc133_prompt_position(buf)
-  local prompt_end_cursor = helpers.ensure_buffer_state(M.buffers, buf).prompt_end_cursor
+---@return integer[], integer[]
+local function assert_osc133_prompt_range(buf)
+  local state = helpers.ensure_buffer_state(M.buffers, buf)
+  local prompt_start_cursor = state.prompt_start_cursor
+  local prompt_end_cursor = state.prompt_end_cursor
+  if not prompt_start_cursor then
+    error("termline: missing OSC133 prompt start cursor")
+  end
   if not prompt_end_cursor then
     error("termline: missing OSC133 prompt end cursor")
   end
-  return prompt_end_cursor
+  return prompt_start_cursor, prompt_end_cursor
+end
+
+---Return OSC133 prompt end position for the current editable command.
+---@param buf integer
+---@return integer, integer
+local function assert_osc133_prompt_end_position(buf)
+  local _, prompt_end_cursor = assert_osc133_prompt_range(buf)
+  return unpack(prompt_end_cursor)
 end
 
 ---@param command_rows string[]
@@ -26,7 +39,7 @@ end
 ---@param buf integer
 ---@return string[]
 local function read_command_rows(buf)
-  local row, prompt_end_col = unpack(assert_osc133_prompt_position(buf))
+  local row, prompt_end_col = assert_osc133_prompt_end_position(buf)
   local line_count = vim.api.nvim_buf_line_count(buf)
   local command_rows = {}
   for index = row, line_count do
@@ -45,9 +58,11 @@ end
 ---@param buf integer
 ---@return string
 local function read_prompt_from_raw(buf)
-  local row, prompt_end_col = unpack(assert_osc133_prompt_position(buf))
+  local prompt_start_cursor, prompt_end_cursor = assert_osc133_prompt_range(buf)
+  local row, prompt_start_col = unpack(prompt_start_cursor)
+  local _, prompt_end_col = unpack(prompt_end_cursor)
   local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
-  return line:sub(1, prompt_end_col)
+  return line:sub(prompt_start_col + 1, prompt_end_col)
 end
 
 ---Refresh the cached prompt for a terminal buffer.
@@ -160,7 +175,7 @@ function M.clear_command(buf, opts)
 end
 
 function M.command_cursor(win, buf)
-  local row, prompt_end_col = unpack(assert_osc133_prompt_position(buf))
+  local row, prompt_end_col = assert_osc133_prompt_end_position(buf)
   local cursor = vim.api.nvim_win_get_cursor(win)
   local command_col = 0
   for index = row, cursor[1] do
@@ -179,7 +194,7 @@ function M.command_cursor(win, buf)
 end
 
 function M.command_screenpos(win, buf)
-  local row, prompt_end_col = unpack(assert_osc133_prompt_position(buf))
+  local row, prompt_end_col = assert_osc133_prompt_end_position(buf)
   local pos = vim.fn.screenpos(win, row, prompt_end_col + 1)
   return { pos.row - 1, pos.col - 1 }
 end

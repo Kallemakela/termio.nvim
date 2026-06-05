@@ -261,7 +261,12 @@ Helpers.open_shell = function(child, prompt)
   local cursor = child.get_cursor()
   -- Terminal window cursor col is not reliable here; inject prompt-end from the prompt text.
   cursor[2] = #prompt
-  -- Test shells do not emit OSC133 prompt markers, so inject prompt-end here.
+  -- Test shells do not emit OSC133 prompt markers, so inject prompt bounds here.
+  child.api.nvim_exec_autocmds("TermRequest", {
+    buffer = buf,
+    modeline = false,
+    data = { sequence = "\27]133;A", cursor = { cursor[1], 0 } },
+  })
   child.api.nvim_exec_autocmds("TermRequest", {
     buffer = buf,
     modeline = false,
