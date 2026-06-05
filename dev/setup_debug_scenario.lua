@@ -93,7 +93,7 @@ function M.open_terminal()
       if vim.env.TERMLINE_DEMO == "1" then
         demo.start()
       end
-    end, 300)
+    end, 500)
   end)
 end
 
