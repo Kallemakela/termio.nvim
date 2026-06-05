@@ -1,7 +1,9 @@
 # termline.nvim
 
-A hacky neovim API for reading, clearing, and writing the active command in a `:terminal` buffer.
-Also includes bundled editors wired to that API.
+Edit the current terminal command in Neovim.
+
+`termline.nvim` provides an API for reading, writing, and syncing the current
+command, and some built-in editors using the API.
 
 #### `prompt` editor demo
 
@@ -68,16 +70,17 @@ require("termline").setup({
 ```
 
 - `editor.type = nil` leaves the API loaded without any editor.
-- `editor.type = "overlay"` uses a floating buffer without the shell prompt.
+- `editor.type = "overlay"` uses a floating buffer without the shell prompt. `prompt` is recommended over this.
 - `editor.type = "prompt"` same as `overlay` but with prompt included in the window.
-- `editor.type = "integrated"` is an in-place editor for the terminal buffer.
+- `editor.type = "editable"` edits the current command directly in the terminal buffer.
+<!-- - `editor.type = "integrated"` is an in-place editor for the terminal buffer. -->
 
 ## API
 
 - `api.read_command` reads text starting from last `OSC133;B` marker.
 - `api.clear_command` sends `clear_current_line` with a `C-c` fallback if the command stays non-empty.
 - `api.write_command` chansends the given command text. 
-- `api.sync_state` clears and writes changed command text, and moves the cursor when `target.cursor` is set.
+- `sync.sync` clears and writes changed command text, and moves the cursor when `target.cursor` is set. See the editors for usage.
 
 
 ```lua
@@ -152,10 +155,6 @@ require("blink.cmp").setup({
   },
 })
 ```
-
-## Hints
-
-You can add a small delay between write and close to hide `chansend()` jitter.
 
 ## [Known issues/Planned features/Roadmap/TODO](/doc/todo.md)
 
