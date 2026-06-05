@@ -1,4 +1,5 @@
 local M = {}
+local config = require("termline.config")
 
 ---@param keys string
 ---@return string
@@ -46,6 +47,24 @@ end
 ---@return integer
 function M.current_buf(buf)
   return buf or vim.api.nvim_get_current_buf()
+end
+
+---@param buf integer
+---@return boolean
+function M.is_enabled_terminal(buf)
+  if vim.bo[buf].buftype ~= "terminal" then
+    return false
+  end
+  local pattern = config.options.editor.terminal_name_pattern
+  if not pattern then
+    return true
+  end
+  local name = vim.api.nvim_buf_get_name(buf)
+  local ok, regex = pcall(vim.regex, pattern)
+  if not ok then
+    error("termline: invalid editor.terminal_name_pattern: " .. tostring(pattern))
+  end
+  return regex:match_str(name) ~= nil
 end
 
 ---@param buffers table<integer, table>

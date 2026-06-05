@@ -129,6 +129,9 @@ local function apply_keymaps()
   local open_keymap = config.options.editor.open
   vim.api.nvim_create_autocmd("TermOpen", {
     callback = function(args)
+      if not helpers.is_enabled_terminal(args.buf) then
+        return
+      end
       local handlers = action_handlers(args.buf)
       vim.keymap.set(
         "n",
@@ -162,7 +165,9 @@ end
 function M.open(ctx)
   ctx = build_context(ctx)
   local buf, win = ctx.target_buf, ctx.target_win
-  helpers.assert_terminal(buf)
+  if not helpers.is_enabled_terminal(buf) then
+    error("termline: terminal buffer name does not match editor.terminal_name_pattern")
+  end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   buffer_state.target_state = read_live_buffer_state(buf, win)
   buffer_state.shell_state.command = buffer_state.target_state.command

@@ -9,6 +9,7 @@ M.defaults = {
   ctrl_c_on = { "\n> ?" },
   editor = {
     type = "prompt",
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     open_on_prompt = false,
     anchor = "prompt",
     open = "<Esc>",

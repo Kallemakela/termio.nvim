@@ -46,6 +46,8 @@ require("termline").setup({
     -- nil means API-only, "prompt" enables the default overlay editor.
     -- "editable" applies edits to terminal buffer directly.
     type = "prompt",
+    -- Vim regex matched against terminal buffer names before editor keymaps attach.
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     -- Global normal-mode mapping for the editor command. Set false to disable.
     open = "<Esc>",
     -- Open the editor when a new OSC133 ]133;B is detected.

@@ -13,6 +13,26 @@ T = MiniTest.new_set({
 
 T["editable edit"] = MiniTest.new_set()
 
+T["editable keymaps"] = MiniTest.new_set()
+
+T["editable keymaps"]["skips terminal names outside allowlist"] = function()
+  child.cmd("terminal /bin/sh")
+  child.wait(100)
+  MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), false)
+end
+
+T["editable keymaps"]["allows configured terminal name pattern"] = function()
+  Helpers.setup_child(
+    child,
+    [=[{ editor = { type = "editable", terminal_name_pattern = [[/bin/sh]] } }]=]
+  )
+  child.cmd("terminal /bin/sh")
+  Helpers.wait_until(child, function()
+    return Helpers.has_terminal_esc_mapping(child)
+  end)
+  MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), true)
+end
+
 local function enter_editable_normal_mode(buf)
   child.api.nvim_input("<Esc>")
   Helpers.wait_for_mode(child, "nt")

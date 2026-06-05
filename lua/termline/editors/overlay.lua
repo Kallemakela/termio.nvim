@@ -151,16 +151,20 @@ local function apply_keymaps()
   end
   vim.api.nvim_create_autocmd("TermOpen", {
     callback = function(args)
-      vim.keymap.set(
-        "n",
-        open_keymap,
-        M.open,
-        { buffer = args.buf, desc = "Edit terminal command" }
-      )
-      vim.keymap.set("t", open_keymap, function()
-        vim.cmd("stopinsert")
-        M.open({ target_buf = args.buf, target_win = vim.fn.bufwinid(args.buf) })
-      end, { buffer = args.buf, desc = "Edit terminal command" })
+      local buf = args.buf
+      vim.schedule(function()
+        if not vim.api.nvim_buf_is_valid(buf) then
+          return
+        end
+        if not helpers.is_enabled_terminal(buf) then
+          return
+        end
+        vim.keymap.set("n", open_keymap, M.open, { buffer = buf, desc = "Edit terminal command" })
+        vim.keymap.set("t", open_keymap, function()
+          vim.cmd("stopinsert")
+          M.open({ target_buf = buf, target_win = vim.fn.bufwinid(buf) })
+        end, { buffer = buf, desc = "Edit terminal command" })
+      end)
     end,
   })
 end
@@ -170,6 +174,9 @@ local function open_on_prompt()
     pattern = "termline-open-on-prompt",
     callback = function(args)
       local target_buf = args.data.buf
+      if not helpers.is_enabled_terminal(target_buf) then
+        return
+      end
       local target_win = vim.fn.bufwinid(target_buf)
       if target_win == -1 or target_win ~= vim.api.nvim_get_current_win() then
         return

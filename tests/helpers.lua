@@ -244,6 +244,10 @@ Helpers.wait_for_shell_output = function(child, buf, expected, timeout)
   error(string.format("expected shell output %q, got %q", expected, output or text or "<nil>"))
 end
 
+Helpers.has_terminal_esc_mapping = function(child)
+  return child.lua_get([[vim.fn.maparg("<Esc>", "t", false, true).buffer == 1]])
+end
+
 Helpers.open_shell = function(child, prompt)
   prompt = prompt or "$ "
   -- TODO: Add coverage for multiple shells instead of relying on one default harness shell.

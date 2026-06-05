@@ -43,6 +43,26 @@ T = MiniTest.new_set({
 
 T["integrated.open()"] = MiniTest.new_set()
 
+T["integrated keymaps"] = MiniTest.new_set()
+
+T["integrated keymaps"]["skips terminal names outside allowlist"] = function()
+  child.cmd("terminal /bin/sh")
+  child.wait(100)
+  MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), false)
+end
+
+T["integrated keymaps"]["allows configured terminal name pattern"] = function()
+  Helpers.setup_child(
+    child,
+    [=[{ editor = { type = "integrated", open = "<Esc>", terminal_name_pattern = [[/bin/sh]] } }]=]
+  )
+  child.cmd("terminal /bin/sh")
+  Helpers.wait_until(child, function()
+    return Helpers.has_terminal_esc_mapping(child)
+  end)
+  MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), true)
+end
+
 T["integrated.open()"]["makes terminal buffer modifiable"] = function()
   local buf = Helpers.open_shell(child)
   local win = child.api.nvim_get_current_win()

@@ -234,6 +234,9 @@ end
 function M.open(ctx)
   ctx = build_context(ctx)
   local buf, win = ctx.target_buf, ctx.target_win
+  if not helpers.is_enabled_terminal(buf) then
+    error("termline: terminal buffer name does not match editor.terminal_name_pattern")
+  end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   buffer_state.shell_state = read_live_buffer_state(buf, win)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
@@ -308,6 +311,9 @@ M.setup = function(config)
   vim.api.nvim_create_autocmd("TermOpen", {
     group = vim.api.nvim_create_augroup("editable-term", {}),
     callback = function(args)
+      if not helpers.is_enabled_terminal(args.buf) then
+        return
+      end
       log.debug("editable.term_open", { buf = args.buf })
       apply_keymaps(args.buf)
       local editgroup =
