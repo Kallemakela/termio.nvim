@@ -84,7 +84,6 @@ function M.collect()
     if buf_state.prompt_end_cursor and terminal.win and vim.api.nvim_win_is_valid(terminal.win) then
       visible = read_visible_state(terminal.buf, terminal.win)
     end
-    local target_state = buf_state.target_state
     local shell_state = buf_state.shell_state
     buffer.cursor = visible and visible.cursor or "-"
     buffer.command = visible and visible.command or "missing prompt"
@@ -94,8 +93,6 @@ function M.collect()
       command = shell_state and shell_state.command or "-",
     }
     target.active = vim.api.nvim_get_option_value("modifiable", { buf = terminal.buf })
-    target.cursor = target_state and target_state.cursor or "-"
-    target.command = target_state and target_state.command or "-"
   end
   local editor_win, editor_buf = find_editor_window()
   target.type = editor_options.type
