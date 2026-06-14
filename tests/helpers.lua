@@ -1,5 +1,7 @@
 -- imported from https://github.com/echasnovski/mini.nvim
 local Helpers = {}
+local test_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h")
+local test_zdotdir = test_root .. "/zsh-test"
 
 -- Add extra expectations
 Helpers.expect = vim.deepcopy(MiniTest.expect)
@@ -251,7 +253,15 @@ end
 Helpers.open_shell = function(child, prompt)
   prompt = prompt or "$ "
   -- TODO: Add coverage for multiple shells instead of relying on one default harness shell.
-  child.cmd(string.format([[terminal env PS1=%q PROMPT=%q zsh -f -i]], prompt, prompt))
+  child.cmd(
+    string.format(
+      [[terminal env ZDOTDIR=%q TERMLINE_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
+      test_zdotdir,
+      test_root,
+      prompt,
+      prompt
+    )
+  )
   local buf = child.api.nvim_get_current_buf()
   -- Terminal startup is async; wait for the prompt itself so the synthetic
   -- OSC133 marker lands at the prompt boundary instead of transient shell output.
