@@ -24,6 +24,18 @@ require("termline").setup()
 
 Press `<Esc>` on a terminal buffer to open the editor.
 
+## Shell integration
+
+Shell integration scripts add more markers to the shell output so we can parse
+what part of the displayed text is the command and what is, e.g., shell
+completions. Enable by sourcing the corresponding script on startup. Example
+for zsh [script](./shell/termline.zsh):
+
+```zsh
+source /path/to/termline.nvim/shell/termline.zsh
+```
+Only zsh supported now. Should be easy to add support for other shells as well.
+
 ## Config
 
 Defaults live in `lua/termline/config.lua`.

@@ -16,5 +16,7 @@
 - Emit [`OSC 633;E;<commandline>[;<nonce>]`] with the exact command text.
 - Read that escape sequence in the terminal and store the command separately from rendered terminal text.
 
+### Keep a marker at the end inside neovim
+
 - Simple solution could be to try to always keep our own marker at the end of the line without other sh scripts
 - might interact with the shell cursor? maybe not? good to try at least.
