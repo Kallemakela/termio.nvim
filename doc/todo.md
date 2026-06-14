@@ -31,6 +31,9 @@
 
 ## Features
 
+### detect which newlines are due to wrap to not unnecessarily parse the command
+#api
+
 ### transfer visual selection to terminal buffer when closing overlay window
 #overlay
 - so start selection in overlay, press e.g. gg, selection now in target buffer ending in the same spot as in overlay
