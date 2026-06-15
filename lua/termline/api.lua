@@ -56,6 +56,20 @@ local function read_command_rows(buf)
 end
 
 ---@param buf integer
+---@return boolean
+local function should_read_command_cache(buf)
+  local shell_state = helpers.ensure_buffer_state(M.buffers, buf).shell_state
+  if shell_state.cursor == nil or vim.bo[buf].modifiable then
+    return false
+  end
+  local win = vim.fn.bufwinid(buf)
+  if win == -1 then
+    return true
+  end
+  return M.command_cursor(win, buf)[2] == shell_state.cursor
+end
+
+---@param buf integer
 ---@return string
 local function read_prompt_from_raw(buf)
   local prompt_start_cursor, prompt_end_cursor = assert_osc133_prompt_range(buf)
@@ -125,20 +139,40 @@ local function clear_line_and_wait(buf, opts)
   return M.read_command(buf) == ""
 end
 
+---Read the current visible command from terminal buffer text only.
+---@param buf integer
+---@return string
+function M.read_command_visible(buf)
+  local command_rows = read_command_rows(buf)
+  if #command_rows == 0 then
+    return ""
+  end
+  return helpers.normalize_command(
+    table.concat(command_rows, ""),
+    config.options.read_strip_patterns
+  )
+end
+
+---Read the current command from the shell-side cache.
+---@param buf? integer
+---@return string
+function M.read_command_cache(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  local shell_state = helpers.ensure_buffer_state(M.buffers, target).shell_state
+  return helpers.normalize_command(shell_state.command, config.options.read_strip_patterns)
+end
+
 ---Read the current visible command.
 ---@param buf? integer
 ---@return string
 function M.read_command(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local command_rows = read_command_rows(target)
-  local command = ""
-  if #command_rows > 0 then
-    command = helpers
-      .strip_patterns(table.concat(command_rows, ""), config.options.read_strip_patterns, "\n")
-      :gsub("\n$", "")
+  if should_read_command_cache(target) then
+    return M.read_command_cache(target)
   end
-  return command
+  return M.read_command_visible(target)
 end
 
 ---Write command text. If omitted, reuse the last cached read value.

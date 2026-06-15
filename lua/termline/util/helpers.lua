@@ -43,6 +43,13 @@ function M.strip_patterns(command, patterns, replacement)
   return command
 end
 
+---@param command string
+---@param patterns string[]
+---@return string
+function M.normalize_command(command, patterns)
+  return M.strip_patterns(command, patterns, "\n"):gsub("\n$", "")
+end
+
 ---@param buf? integer
 ---@return integer
 function M.current_buf(buf)
