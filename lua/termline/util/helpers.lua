@@ -83,6 +83,7 @@ function M.ensure_buffer_state(buffers, buf)
       prompt = nil,
       prompt_start_cursor = nil,
       prompt_end_cursor = nil,
+      shell_integration_ready = false,
       shell_state = { command = "", cursor = nil },
     }
   return buffers[buf]

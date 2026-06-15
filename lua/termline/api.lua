@@ -1,7 +1,15 @@
 local M = {}
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
-local shell_query_sequence = "\27[99;9u"
+
+local function signal_shell_query(buf)
+  local job_id = vim.b[buf].terminal_job_id
+  local pid = job_id and vim.fn.jobpid(job_id)
+  if not pid or pid <= 0 then
+    error("termline: missing terminal job pid")
+  end
+  vim.uv.kill(pid, vim.uv.constants.SIGUSR1)
+end
 
 M.buffers = {}
 
@@ -148,9 +156,11 @@ function M.should_read_command_shell(buf)
   helpers.assert_terminal(target)
   local state = helpers.ensure_buffer_state(M.buffers, target)
   local name = vim.api.nvim_buf_get_name(target)
-  return name:match("zsh") ~= nil
+  local should_query = name:match("zsh") ~= nil
+    and state.shell_integration_ready == true
     and state.prompt_start_cursor ~= nil
     and state.prompt_end_cursor ~= nil
+  return should_query
 end
 
 ---Read the current command.
@@ -177,7 +187,7 @@ function M.read_command_shell(buf, timeout_ms)
   helpers.assert_terminal(target)
   local state = helpers.ensure_buffer_state(M.buffers, target)
   state.shell_query_pending = true
-  helpers.send_bytes(shell_query_sequence, target)
+  signal_shell_query(target)
   local received = vim.wait(timeout_ms or 200, function()
     return state.shell_query_pending == false
   end, 5)

@@ -5,6 +5,7 @@ if [[ -n ${TERMLINE_SHELL_INTEGRATION_LOADED:-} ]]; then
 fi
 
 TERMLINE_SHELL_INTEGRATION_LOADED=1
+printf '\e]633;I\a'
 
 # Escape marker payload so separators stay parseable.
 termline_shell_escape() {
@@ -23,5 +24,6 @@ termline_shell_report_buffer() {
 }
 
 add-zsh-hook preexec termline_shell_preexec
-zle -N termline-report-buffer termline_shell_report_buffer
-bindkey '\e[99;9u' termline-report-buffer
+TRAPUSR1() {
+  termline_shell_report_buffer
+}

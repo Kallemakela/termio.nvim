@@ -1,5 +1,6 @@
 local api = require("termline.api")
 local helpers = require("termline.util.helpers")
+local log = require("termline.util.log")
 
 local M = {}
 
@@ -58,6 +59,11 @@ function M.handle_term_request(args)
   end
   if args.data.sequence:match("^\27]133;B") then
     update_prompt(args, state)
+    return
+  end
+  if args.data.sequence:match("^\27]633;I") then
+    log.debug("shell integration ready", { buf = args.buf })
+    state.shell_integration_ready = true
     return
   end
   if args.data.sequence:match("^\27]633;Q") then
