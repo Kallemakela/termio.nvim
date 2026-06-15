@@ -36,4 +36,22 @@ T["shell integration"]["test shell emits OSC633 preexec marker"] = function()
   end)
 end
 
+T["shell integration"]["test shell command query reads current buffer"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.api.nvim_input("echo a;b")
+  Helpers.wait_until(child, function()
+    return child.lua_get([[require("termline").read_command_shell(...)]], { buf }) == "echo a;b"
+  end)
+end
+
+T["shell integration"]["test shell command query ignores stale completion rows"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.api.nvim_input("ls <Tab>foo")
+  Helpers.wait_until(child, function()
+    return child.lua_get([[require("termline").read_command_shell(...)]], { buf }) == "ls foo"
+  end)
+end
+
 return T

@@ -1,6 +1,7 @@
 local M = {}
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
+local shell_query_sequence = "\27[99;9u"
 
 M.buffers = {}
 
@@ -146,6 +147,25 @@ function M.read_command(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
   return M.read_command_visible(target)
+end
+
+---Query the shell-side editable command through shell integration.
+---@param buf? integer
+---@param timeout_ms? integer
+---@return string
+function M.read_command_shell(buf, timeout_ms)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  local state = helpers.ensure_buffer_state(M.buffers, target)
+  state.shell_query_pending = true
+  helpers.send_bytes(shell_query_sequence, target)
+  local received = vim.wait(timeout_ms or 200, function()
+    return state.shell_query_pending == false
+  end, 5)
+  if not received then
+    error("termline: shell command query timed out")
+  end
+  return state.shell_state.command
 end
 
 ---Write command text. If omitted, reuse the last cached read value.
