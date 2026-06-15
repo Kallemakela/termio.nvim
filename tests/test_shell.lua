@@ -36,30 +36,4 @@ T["shell integration"]["test shell emits OSC633 preexec marker"] = function()
   end)
 end
 
-T["shell integration"]["test shell updates state from OSC633 buffer marker"] = function()
-  local buf = Helpers.open_shell(child)
-  child.lua([[
-    _G.termline_test_sequences = {}
-    vim.api.nvim_create_autocmd("TermRequest", {
-      group = vim.api.nvim_create_augroup("termline-test-osc633-buffer", { clear = true }),
-      callback = function(args)
-        table.insert(_G.termline_test_sequences, args.data.sequence)
-      end,
-    })
-  ]])
-  child.cmd("startinsert")
-  child.api.nvim_input("ls <Tab>")
-  Helpers.wait_until(child, function()
-    return child.lua_get([[
-      vim.iter(_G.termline_test_sequences):any(function(sequence)
-        return sequence:match("^\27]633;T;3;ls ") ~= nil
-      end)
-    ]])
-  end)
-  MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...].shell_state]], { buf }),
-    { command = "ls ", cursor = 3 }
-  )
-end
-
 return T

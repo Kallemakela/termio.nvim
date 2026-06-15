@@ -96,8 +96,7 @@ require("termline").setup({
 ## API
 
 - `api.read_command_visible` reads text starting from last `OSC133;B` marker from the visible terminal buffer.
-- `api.read_command_cache` reads command text from the shell-side cache.
-- `api.read_command` chooses between live buffer and cache automatically.
+- `api.read_command` reads the visible terminal buffer command.
 - `api.clear_command` sends `clear_current_line` with a `C-c` fallback if the command stays non-empty.
 - `api.write_command` chansends the given command text. 
 - `sync.sync` clears and writes changed command text, and moves the cursor when `target.cursor` is set. See the editors for usage.
@@ -108,7 +107,6 @@ local termline = require("termline.api")
 local buf = vim.api.nvim_get_current_buf()
 local command = termline.read_command(buf)
 local visible_command = termline.read_command_visible(buf)
-local cached_command = termline.read_command_cache(buf)
 termline.clear_command(buf)
 termline.write_command("echo hello", buf)
 ```

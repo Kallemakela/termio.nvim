@@ -1,6 +1,5 @@
 local api = require("termline.api")
 local helpers = require("termline.util.helpers")
-local zsh = require("termline.shell_integration.zsh")
 
 local M = {}
 
@@ -35,9 +34,6 @@ end
 ---@param args vim.api.keyset.create_autocmd.callback_args
 function M.handle_term_request(args)
   local state = helpers.ensure_buffer_state(api.buffers, args.buf)
-  if zsh.update_shell_state(state.shell_state, args.data.sequence) then
-    return
-  end
   if args.data.sequence:match("^\27]133;A") then
     state.prompt_start_cursor = args.data.cursor
     return

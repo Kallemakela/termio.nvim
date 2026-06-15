@@ -1,4 +1,4 @@
-autoload -Uz add-zsh-hook add-zle-hook-widget
+autoload -Uz add-zsh-hook
 
 if [[ -n ${TERMLINE_SHELL_INTEGRATION_LOADED:-} ]]; then
   return
@@ -18,12 +18,4 @@ termline_shell_preexec() {
   printf '\e]633;E;%s\a' "$(termline_shell_escape "$1")"
 }
 
-# Emit the live ZLE buffer state before each prompt-line redraw.
-termline_shell_buffer_state() {
-  printf '\e]633;T;%s;%s\a' "$CURSOR" "$(termline_shell_escape "$BUFFER")"
-}
-
 add-zsh-hook preexec termline_shell_preexec
-# Register the shell function as a ZLE widget before attaching the hook.
-zle -N termline-shell-buffer-state termline_shell_buffer_state
-add-zle-hook-widget line-pre-redraw termline-shell-buffer-state
