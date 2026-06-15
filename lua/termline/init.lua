@@ -11,12 +11,10 @@ local function load_editor()
     return nil
   elseif editor == "overlay" then
     return require("termline.editors.overlay")
-  elseif editor == "prompt" then
-    return require("termline.editors.prompt")
   elseif editor == "editable" then
     return require("termline.editors.editable")
   end
-  error("termline: config.editor.type must be nil, 'overlay', 'prompt', or 'editable'")
+  error("termline: config.editor.type must be nil, 'overlay', or 'editable'")
 end
 
 local function create_autocmds()

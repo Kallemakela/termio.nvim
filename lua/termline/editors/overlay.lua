@@ -7,11 +7,28 @@ local log = require("termline.util.log")
 
 local M = {}
 
-M.get_buftype = function()
-  return "nofile"
+local function clamp_cursor_to_prompt(edit_buf)
+  local prompt = vim.fn.prompt_getprompt(edit_buf)
+  local cursor = vim.api.nvim_win_get_cursor(0)
+  if cursor[1] ~= 1 or cursor[2] >= #prompt then
+    return
+  end
+  vim.api.nvim_win_set_cursor(0, { 1, #prompt })
 end
-M.get_anchor = function()
-  return config.options.editor.anchor
+
+local function register_cursor_clamp(edit_buf)
+  local group = vim.api.nvim_create_augroup("termline-prompt-" .. edit_buf, { clear = true })
+  vim.api.nvim_create_autocmd("CursorMoved", {
+    group = group,
+    buffer = edit_buf,
+    callback = function()
+      clamp_cursor_to_prompt(edit_buf)
+    end,
+  })
+end
+
+M.get_buftype = function()
+  return "prompt"
 end
 M.get_write_fn = function(target_buf)
   return function(text)
@@ -19,16 +36,41 @@ M.get_write_fn = function(target_buf)
   end
 end
 M.get_editor_text = function(edit_buf)
-  return table.concat(vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false), "\n")
+  local lines = vim.api.nvim_buf_get_lines(edit_buf, 0, -1, false)
+  local prompt = vim.fn.prompt_getprompt(edit_buf)
+  if #lines > 0 and prompt ~= "" and lines[1]:sub(1, #prompt) == prompt then
+    lines[1] = lines[1]:sub(#prompt + 1)
+  end
+  return table.concat(lines, "\n")
 end
-M.pre_open = function(edit_buf, ctx) end
+M.pre_open = function(edit_buf, ctx)
+  local prompt_text = helpers.ensure_buffer_state(api.buffers, ctx.target_buf).prompt
+  if not prompt_text or prompt_text == "" then
+    vim.wait(50, function()
+      prompt_text = helpers.ensure_buffer_state(api.buffers, ctx.target_buf).prompt
+      return prompt_text and prompt_text ~= ""
+    end)
+  end
+  vim.fn.prompt_setprompt(edit_buf, prompt_text or "")
+  register_cursor_clamp(edit_buf)
+end
 M.get_initial_lines = function(lines, edit_buf, ctx)
+  local prompt = vim.fn.prompt_getprompt(edit_buf)
+  lines[1] = prompt .. (lines[1] or "")
   return lines
 end
 M.get_initial_cursor = function(cursor_pos, edit_buf, ctx)
+  local prompt = vim.fn.prompt_getprompt(edit_buf)
+  if cursor_pos[1] == 1 then
+    local command_col = cursor_pos[2]
+    if command_col > 0 then
+      command_col = command_col - 1
+    end
+    return { cursor_pos[1], #prompt + command_col }
+  end
   return cursor_pos
 end
-M.startinsert_on_open = false
+M.startinsert_on_open = true
 
 local function feed_terminal_key(key)
   vim.api.nvim_feedkeys(helpers.term_codes(key), "t", false)
@@ -121,25 +163,14 @@ end
 ---@return table
 local function popup_config(target_win, command, command_screenpos)
   local width = vim.api.nvim_win_get_width(target_win)
-  local col, popup_width
-  local anchor = M.get_anchor()
-  if anchor == "prompt" then
-    col = command_screenpos[2] or 0
-    popup_width = math.max(width - col, 1)
-  elseif anchor == "start" then
-    local _, win_col = unpack(vim.api.nvim_win_get_position(target_win))
-    col = win_col
-    popup_width = width
-  else
-    error("termline: invalid anchor " .. vim.inspect(anchor) .. ", expected 'prompt' or 'start'")
-  end
+  local _, win_col = unpack(vim.api.nvim_win_get_position(target_win))
   return {
     relative = "editor",
     style = "minimal",
     border = "none",
-    width = popup_width,
-    height = window_height(command, popup_width, command_screenpos[1]),
-    col = math.max(col, 0),
+    width = width,
+    height = window_height(command, width, command_screenpos[1]),
+    col = math.max(win_col, 0),
     row = math.max(command_screenpos[1], 0),
   }
 end

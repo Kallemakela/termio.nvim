@@ -1,11 +1,12 @@
 ## Width issues
 
-The overlay window width is currently either
-- `prompt` which starts at prompt, even if multiline, making it a bit ugly and quite annoying if the width ends up being small
-- `start` which hides the prompt
+Places an overlay window on the row where the latest osc133 B marker is
+detected. Uses `buftype=prompt` to include the prompt as non-modifiable text.
 
-`prompt` editor is implemented to solve this issue and is now recommended instead of overlay.
+Smoothest editing experience since jitter is hidden behind the window.
 
-Remaining overlay-specific idea:
-1. Make two floating windows, use prompt as starting point for first line, start for the rest `./plan-two-floating-windows.md`
-    - mega hack
+Some hacks required to make focus transitions between overlay window and the
+target terminal window seamless.
+- Like if user tries to open a buffer in the editor window, the window is
+closed and buffer is opened in the target window
+./../lua/termline/editors/fixbuf.lua

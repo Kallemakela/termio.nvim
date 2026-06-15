@@ -8,7 +8,7 @@ Edit the current terminal command in Neovim.
 `termline.nvim` provides an API for reading, writing, and syncing the current
 command, and some built-in editors using the API.
 
-#### `prompt` editor demo
+#### `overlay` editor demo
 
 https://github.com/user-attachments/assets/71864d1e-9fc7-4875-9b6c-910e9a6bef4d
 
@@ -45,9 +45,9 @@ require("termline").setup({
   -- Ctrl-C is used to clear the line if any of these match the command.
   ctrl_c_on = { "\n> ?" },
   editor = {
-    -- nil means API-only, "prompt" enables the default overlay editor.
+    -- nil means API-only, "overlay" enables the default floating editor.
     -- "editable" applies edits to terminal buffer directly.
-    type = "prompt",
+    type = "overlay",
     -- Vim regex matched against terminal buffer names before editor keymaps attach.
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     -- Global normal-mode mapping for the editor command. Set false to disable.
@@ -77,8 +77,7 @@ require("termline").setup({
 ```
 
 - `editor.type = nil` leaves the API loaded without any editor.
-- `editor.type = "overlay"` uses a floating buffer without the shell prompt. `prompt` is recommended over this.
-- `editor.type = "prompt"` same as `overlay` but with prompt included in the window.
+- `editor.type = "overlay"` uses the default floating editor with the shell prompt included.
 - `editor.type = "editable"` edits the current command directly in the terminal buffer.
 <!-- - `editor.type = "integrated"` is an in-place editor for the terminal buffer. -->
 
