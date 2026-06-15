@@ -116,6 +116,22 @@ T["prompt.open()"]["insert submit returns to terminal mode"] = function()
   Helpers.wait_for_mode(child, "t")
 end
 
+T["prompt.open()"]["echo hello esc x cr outputs hell"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello")
+  Helpers.wait_for_read_command(child, buf, "echo hello")
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("buftype", { buf = 0 }) == "prompt"
+  end)
+  child.api.nvim_input("x<CR>")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_current_buf() == buf
+  end)
+  Helpers.wait_for_shell_output(child, buf, "hell")
+end
 
 T["prompt.open()"]["echo hello world esc bbdw cr outputs world"] = function()
   local buf = Helpers.open_shell(child)

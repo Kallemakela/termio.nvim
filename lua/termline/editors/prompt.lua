@@ -60,7 +60,11 @@ end
 overlay.get_initial_cursor = function(cursor_pos, edit_buf, ctx)
   local prompt = vim.fn.prompt_getprompt(edit_buf)
   if cursor_pos[1] == 1 then
-    return { cursor_pos[1], #prompt + cursor_pos[2] }
+    local command_col = cursor_pos[2]
+    if command_col > 0 then
+      command_col = command_col - 1
+    end
+    return { cursor_pos[1], #prompt + command_col }
   end
   return cursor_pos
 end
