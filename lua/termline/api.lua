@@ -140,12 +140,31 @@ function M.read_command_visible(buf)
   )
 end
 
----Read the current visible command.
+---Return true when shell-side command query is worth trying.
+---@param buf? integer
+---@return boolean
+function M.should_read_command_shell(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  local state = helpers.ensure_buffer_state(M.buffers, target)
+  local name = vim.api.nvim_buf_get_name(target)
+  return name:match("zsh") ~= nil
+    and state.prompt_start_cursor ~= nil
+    and state.prompt_end_cursor ~= nil
+end
+
+---Read the current command.
 ---@param buf? integer
 ---@return string
 function M.read_command(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
+  if M.should_read_command_shell(target) then
+    local ok, command = pcall(M.read_command_shell, target)
+    if ok then
+      return command
+    end
+  end
   return M.read_command_visible(target)
 end
 

@@ -96,7 +96,7 @@ require("termline").setup({
 ## API
 
 - `api.read_command_visible` reads text starting from last `OSC133;B` marker from the visible terminal buffer.
-- `api.read_command` reads the visible terminal buffer command.
+- `api.read_command` queries zsh ZLE `BUFFER` when supported, otherwise reads the visible terminal buffer.
 - `api.read_command_shell` queries zsh ZLE `BUFFER` through shell integration.
 - `api.clear_command` sends `clear_current_line` with a `C-c` fallback if the command stays non-empty.
 - `api.write_command` chansends the given command text. 

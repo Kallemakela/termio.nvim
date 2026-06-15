@@ -48,7 +48,7 @@ end
 
 local function read_visible_state(buf, win)
   local api = get_api()
-  local command = api.read_command(buf)
+  local command = api.read_command_visible(buf)
   local cursor = api.command_cursor(win, buf)[2]
   return { command = command, cursor = cursor }
 end

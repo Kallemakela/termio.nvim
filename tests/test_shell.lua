@@ -54,4 +54,13 @@ T["shell integration"]["test shell command query ignores stale completion rows"]
   end)
 end
 
+T["shell integration"]["test read command ignores stale completion rows"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.api.nvim_input("ls <Tab>foo")
+  Helpers.wait_until(child, function()
+    return child.lua_get([[require("termline").read_command(...)]], { buf }) == "ls foo"
+  end)
+end
+
 return T

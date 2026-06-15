@@ -12,6 +12,7 @@ T = MiniTest.new_set({
 })
 
 T["read_command()"] = MiniTest.new_set()
+T["read_command_visible()"] = MiniTest.new_set()
 
 T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   local prompt = "$ "
@@ -35,7 +36,7 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   )
 end
 
-T["read_command()"]["strips all-whitespace input"] = function()
+T["read_command_visible()"]["strips all-whitespace input"] = function()
   local prompt = string.rep("x", 27)
 
   child.cmd("terminal true")
@@ -53,7 +54,10 @@ T["read_command()"]["strips all-whitespace input"] = function()
     data = { sequence = "\27]133;B", cursor = { 1, 27 } },
   })
 
-  MiniTest.expect.equality(child.lua_get([[require("termline").read_command(...)]], { buf }), "")
+  MiniTest.expect.equality(
+    child.lua_get([[require("termline").read_command_visible(...)]], { buf }),
+    ""
+  )
 end
 
 return T

@@ -8,15 +8,25 @@ local function status_height()
 end
 
 local function render()
+  if state.rendering then
+    return
+  end
   if not (state.buf and vim.api.nvim_buf_is_valid(state.buf)) then
     return
   end
-  if state.win and vim.api.nvim_win_is_valid(state.win) then
-    vim.api.nvim_win_set_height(state.win, status_height())
+  state.rendering = true
+  local ok, err = pcall(function()
+    if state.win and vim.api.nvim_win_is_valid(state.win) then
+      vim.api.nvim_win_set_height(state.win, status_height())
+    end
+    vim.bo[state.buf].modifiable = true
+    vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, status.snapshot_lines())
+    vim.bo[state.buf].modifiable = false
+  end)
+  state.rendering = false
+  if not ok then
+    error(err)
   end
-  vim.bo[state.buf].modifiable = true
-  vim.api.nvim_buf_set_lines(state.buf, 0, -1, false, status.snapshot_lines())
-  vim.bo[state.buf].modifiable = false
 end
 
 local function open_window()
