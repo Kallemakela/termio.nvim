@@ -2,7 +2,8 @@ local M = {}
 
 M.defaults = {
   clear_current_line = "<C-e><C-u>",
-  clear_current_line_wait_ms = 20,
+  clear_current_line_check_ms = 10,
+  clear_current_line_check_count = 5,
   prompt_refresh_wait_ms = 50,
   read_strip_patterns = { "\\n", "\n> ?", "^%s+$", "%s%s+$" },
   write_strip_patterns = { "\n" },

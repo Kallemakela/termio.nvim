@@ -114,11 +114,14 @@ local function clear_line_and_wait(buf, opts)
   if opts and opts.skip_verify then
     return true
   end
-  -- true stops waiting once the command area is empty.
-  -- false keeps waiting so Ctrl-C fallback can be avoided if clear_current_line works.
-  vim.wait(config.options.clear_current_line_wait_ms, function()
-    return M.read_command(buf) == ""
-  end)
+  for _ = 1, config.options.clear_current_line_check_count do
+    if M.read_command(buf) == "" then
+      return true
+    end
+    vim.wait(config.options.clear_current_line_check_ms, function()
+      return false
+    end)
+  end
   return M.read_command(buf) == ""
 end
 

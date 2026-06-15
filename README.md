@@ -32,8 +32,10 @@ Defaults live in `lua/termline/config.lua`.
 require("termline").setup({
   -- Keys sent by clear_command to clear the current line.
   clear_current_line = "<C-u>",
-  -- Max wait after clear_current_line before checking whether the command was cleared.
-  clear_current_line_wait_ms = 20,
+  -- Delay between clear_current_line verification checks.
+  clear_current_line_check_ms = 10,
+  -- Number of clear_current_line verification checks before falling back to Ctrl-C.
+  clear_current_line_check_count = 5,
   -- Max wait for the shell to emit a fresh prompt after an interrupt.
   prompt_refresh_wait_ms = 50,
   -- Patterns stripped from command text when reading input.
