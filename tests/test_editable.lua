@@ -71,6 +71,25 @@ T["editable edit"]["open stores current shell state"] = function()
   )
 end
 
+T["editable edit"]["open clears zsh tab suggestions"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("ls <Tab>")
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") ~= nil
+  end)
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_for_mode(child, "nt")
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") == nil
+  end)
+end
+
 T["editable edit"]["submit runs command in normal mode and enters insert mode"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")

@@ -237,6 +237,9 @@ function M.open(ctx)
   if not helpers.is_enabled_terminal(buf) then
     error("termline: terminal buffer name does not match editor.terminal_name_pattern")
   end
+  if api.should_read_command_shell(buf) then
+    api.clear_completion_suggestions(buf)
+  end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   buffer_state.shell_state = read_live_buffer_state(buf, win)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })

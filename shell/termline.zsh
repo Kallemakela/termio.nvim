@@ -23,7 +23,15 @@ termline_shell_report_buffer() {
   printf '\e]633;Q;%s;%s\a' "$CURSOR" "$(termline_shell_escape "$BUFFER")"
 }
 
+termline_shell_clear_completions() {
+  zle -R -c
+}
+zle -N termline-clear-completions termline_shell_clear_completions
+
 add-zsh-hook preexec termline_shell_preexec
 TRAPUSR1() {
   termline_shell_report_buffer
+}
+TRAPUSR2() {
+  termline_shell_clear_completions
 }

@@ -63,4 +63,21 @@ T["shell integration"]["test read command ignores stale completion rows"] = func
   end)
 end
 
+T["shell integration"]["test API clears zsh tab suggestions"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.api.nvim_input("ls <Tab>")
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") ~= nil
+  end)
+  child.lua([[require("termline").clear_completion_suggestions(...)]], { buf })
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") == nil
+  end)
+end
+
 return T

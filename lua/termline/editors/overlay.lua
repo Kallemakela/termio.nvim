@@ -382,6 +382,9 @@ local function apply_editor_keymaps(edit_buf, handlers)
 end
 
 local function open_editor(ctx)
+  if api.should_read_command_shell(ctx.target_buf) then
+    api.clear_completion_suggestions(ctx.target_buf)
+  end
   local command = api.read_command(ctx.target_buf)
   local command_screenpos = api.command_screenpos(ctx.target_win, ctx.target_buf)
   local last_synced = { text = command }

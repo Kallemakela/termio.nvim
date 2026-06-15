@@ -2,13 +2,13 @@ local M = {}
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
 
-local function signal_shell_query(buf)
+local function signal_shell(buf, signal)
   local job_id = vim.b[buf].terminal_job_id
   local pid = job_id and vim.fn.jobpid(job_id)
   if not pid or pid <= 0 then
     error("termline: missing terminal job pid")
   end
-  vim.uv.kill(pid, vim.uv.constants.SIGUSR1)
+  vim.uv.kill(pid, signal)
 end
 
 M.buffers = {}
@@ -187,7 +187,7 @@ function M.read_command_shell(buf, timeout_ms)
   helpers.assert_terminal(target)
   local state = helpers.ensure_buffer_state(M.buffers, target)
   state.shell_query_pending = true
-  signal_shell_query(target)
+  signal_shell(target, vim.uv.constants.SIGUSR1)
   local received = vim.wait(timeout_ms or 200, function()
     return state.shell_query_pending == false
   end, 5)
@@ -195,6 +195,14 @@ function M.read_command_shell(buf, timeout_ms)
     error("termline: shell command query timed out")
   end
   return state.shell_state.command
+end
+
+---Clear shell completion suggestions displayed below the prompt.
+---@param buf? integer
+function M.clear_completion_suggestions(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  signal_shell(target, vim.uv.constants.SIGUSR2)
 end
 
 ---Write command text. If omitted, reuse the last cached read value.

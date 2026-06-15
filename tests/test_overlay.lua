@@ -113,6 +113,27 @@ T["overlay.open()"]["renders prompt from terminal state"] = function()
   MiniTest.expect.equality(got_prompt, prompt .. "echo hello world")
 end
 
+T["overlay.open()"]["clears zsh tab suggestions"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("ls <Tab>")
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") ~= nil
+  end)
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("buftype", { buf = 0 }) == "prompt"
+  end)
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("README%.md") == nil
+  end)
+end
+
 T["overlay.open()"]["tab pass-through returns to terminal insert mode"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
@@ -122,9 +143,10 @@ T["overlay.open()"]["tab pass-through returns to terminal insert mode"] = functi
     return child.api.nvim_get_option_value("buftype", { buf = 0 }) == "prompt"
   end)
   child.api.nvim_input("acat R<Tab>")
-  child.wait(100)
-  MiniTest.expect.equality(child.api.nvim_get_current_buf(), buf)
-  MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "t")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_current_buf() == buf
+  end)
+  Helpers.wait_for_mode(child, "t")
 end
 
 T["overlay.open()"]["submit returns to terminal mode"] = function()
