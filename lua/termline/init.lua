@@ -3,18 +3,19 @@ local config = require("termline.config")
 local commands = require("termline.commands")
 local shell_integration = require("termline.shell_integration.general")
 
-local M = api
+local M = {
+  read_command = api.read_command,
+  write_command = api.write_command,
+}
 
 local function load_editor()
   local editor = config.options.editor.type
   if editor == nil then
     return nil
-  elseif editor == "overlay" then
-    return require("termline.editors.overlay")
   elseif editor == "editable" then
     return require("termline.editors.editable")
   end
-  error("termline: config.editor.type must be nil, 'overlay', or 'editable'")
+  error("termline: config.editor.type must be nil or 'editable'")
 end
 
 local function create_autocmds()

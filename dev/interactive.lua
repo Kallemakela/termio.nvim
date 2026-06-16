@@ -12,15 +12,15 @@ local long_lorem = table.concat({
 }, " ")
 
 local function write_long_lorem_with_zle()
-  local api = require("termline.api")
+  local termline = require("termline")
   local buf = scenario.terminal_buf
   local ready = vim.wait(1000, function()
-    return pcall(api.read_command_shell, buf, 100)
+    return pcall(termline.read_command, buf)
   end, 20)
   if not ready then
     error("termline dev: zsh integration is not ready")
   end
-  api.write_command_shell(long_lorem, nil, buf)
+  termline.write_command(long_lorem, buf)
 end
 
 scenario.setup({

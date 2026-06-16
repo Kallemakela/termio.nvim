@@ -46,11 +46,11 @@ local function format_debug_cursor(cursor)
   return string.format("%2s", tostring(value))
 end
 
-local function read_visible_state(buf, win)
+local function read_buffer_state(buf, win)
   local api = get_api()
-  local command = api.read_command_visible(buf)
-  local cursor = api.command_cursor(win, buf)[2]
-  return { command = command, cursor = cursor }
+  local helpers = get_helpers()
+  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
+  return { command = shell_state.command, cursor = api.command_cursor(win, buf)[2] }
 end
 
 local function find_editor_window()
@@ -82,7 +82,7 @@ function M.collect()
     local buf_state = helpers.ensure_buffer_state(api.buffers, terminal.buf)
     local visible = nil
     if buf_state.prompt_end_cursor and terminal.win and vim.api.nvim_win_is_valid(terminal.win) then
-      visible = read_visible_state(terminal.buf, terminal.win)
+      visible = read_buffer_state(terminal.buf, terminal.win)
     end
     local shell_state = buf_state.shell_state
     buffer.cursor = visible and visible.cursor or "-"

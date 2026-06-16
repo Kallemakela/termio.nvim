@@ -8,11 +8,8 @@ function M.setup()
     vim.api.nvim_echo({ { command == "" and "(empty)" or command } }, false, {})
   end, {})
   vim.api.nvim_create_user_command("TermWriteCommand", function(opts)
-    api.write_command(opts.args ~= "" and opts.args or nil)
+    api.write_command(opts.args)
   end, { nargs = "*" })
-  vim.api.nvim_create_user_command("TermClearCommand", function()
-    api.clear_command()
-  end, {})
 end
 
 return M

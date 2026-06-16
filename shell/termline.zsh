@@ -49,7 +49,7 @@ termline_shell_control() {
   local action="${payload%%$'\n'*}"
   local body="${payload#*$'\n'}"
   if [[ "$action" == "write" ]]; then
-    termline_shell_write_buffer "$body"
+    zle termline-write-buffer -- "$body"
   elif [[ "$action" == "clear-completions" ]]; then
     termline_shell_clear_completions
   elif [[ "$action" == "query" ]]; then
