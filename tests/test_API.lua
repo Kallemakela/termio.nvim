@@ -20,7 +20,6 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
     [[local buf, prompt = ...
     local api = require("termline.api")
     local state = require("termline.util.helpers").ensure_buffer_state(api.buffers, buf)
-    state.prompt = prompt
     state.prompt_start_cursor = { 1, 0 }
     state.prompt_end_cursor = { 1, #prompt }]],
     { buf, prompt }

@@ -71,7 +71,7 @@ end
 
 function M.collect()
   local terminal = _G.termline_debug and _G.termline_debug.terminal or {}
-  local shell = { prompt = "-", command = "missing terminal", cursor = { "-", "-" } }
+  local shell = { command = "missing terminal", cursor = { "-", "-" } }
   local target = { active = false, cursor = "-", command = "-" }
   local buffer = { cursor = "-", command = "missing terminal" }
   local config = get_config()
@@ -88,7 +88,6 @@ function M.collect()
     buffer.cursor = visible and visible.cursor or "-"
     buffer.command = visible and visible.command or "missing prompt"
     shell = {
-      prompt = buf_state.prompt,
       cursor = shell_state and shell_state.cursor or "-",
       command = shell_state and shell_state.command or "-",
     }
@@ -109,11 +108,10 @@ end
 function M.render_lines(snapshot)
   return {
     string.format(
-      "target: type=%s active=%s mode=%s prompt='%s' term=%s/%s/%s buf=%s win=%s",
+      "target: type=%s active=%s mode=%s term=%s/%s/%s buf=%s win=%s",
       snapshot.target.type or "-",
       tostring(snapshot.target.active),
       vim.api.nvim_get_mode().mode,
-      inspect_text(snapshot.shell.prompt),
       snapshot.terminal.buf or "-",
       snapshot.terminal.win or "-",
       snapshot.terminal.chan or "-",

@@ -80,7 +80,6 @@ end
 function M.ensure_buffer_state(buffers, buf)
   buffers[buf] = buffers[buf]
     or {
-      prompt = nil,
       prompt_start_cursor = nil,
       prompt_end_cursor = nil,
       shell_integration_ready = false,

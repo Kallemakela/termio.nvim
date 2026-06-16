@@ -45,26 +45,6 @@ local function assert_prompt_range(buf)
   return state.prompt_start_cursor, state.prompt_end_cursor
 end
 
----@param buf integer
----@return string
-local function read_prompt_from_raw(buf)
-  local prompt_start_cursor, prompt_end_cursor = assert_prompt_range(buf)
-  local row, prompt_start_col = unpack(prompt_start_cursor)
-  local _, prompt_end_col = unpack(prompt_end_cursor)
-  local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
-  return line:sub(prompt_start_col + 1, prompt_end_col)
-end
-
----Refresh the cached prompt for a terminal buffer.
----@param buf integer
----@return string
-function M.update_cached_prompt(buf)
-  helpers.assert_terminal(buf)
-  local state = helpers.ensure_buffer_state(M.buffers, buf)
-  state.prompt = read_prompt_from_raw(buf)
-  return state.prompt
-end
-
 ---Query the current zsh BUFFER.
 ---@param buf? integer
 ---@param timeout_ms? integer

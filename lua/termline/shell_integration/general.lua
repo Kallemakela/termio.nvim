@@ -19,22 +19,6 @@ end
 local function update_prompt(args, state)
   state.prompt_end_cursor = args.data.cursor
   clear_shell_state(state.shell_state)
-  -- HACK: TermRequest arrives before the terminal buffer line shows the new prompt text.
-  vim.defer_fn(function()
-    if vim.api.nvim_buf_is_valid(args.buf) then
-      local prompt = api.update_cached_prompt(args.buf)
-      vim.api.nvim_exec_autocmds("User", {
-        pattern = "termline-prompt-updated",
-        data = { buf = args.buf, cursor = args.data.cursor, prompt = prompt },
-        modeline = false,
-      })
-    end
-  end, 10)
-  vim.api.nvim_exec_autocmds("User", {
-    pattern = "termline-open-on-prompt",
-    data = { buf = args.buf, cursor = args.data.cursor },
-    modeline = false,
-  })
 end
 
 ---@param sequence string

@@ -69,26 +69,6 @@ User commands target the current terminal buffer.
 :TermWriteCommand echo hello
 ```
 
-## User Autocommands
-
-#### `User termline-open-on-prompt` after a terminal `OSC133;B`
-prompt marker is seen.
-`args.data` contains:
-- `buf`: terminal buffer handle
-- `cursor`: `{ row, col }` from the `TermRequest` event. `row` is the 1-based
-  terminal line. `col` is the 0-based byte column right after the prompt, so it
-  points at the first command character position.
-
-See `./termline.nvim/lua/termline/editors/overlay.lua` for usage example.
-
-#### `User termline-prompt-updated` after the cached prompt text has been refreshed. 
-`args.data` contains:
-- `buf`: terminal buffer handle
-- `cursor`: `{ row, col }` from the `TermRequest` event
-- `prompt`: cached prompt text
-
-Example TBD
-
 ## Terms
 
 - Command: full editable command text, can contain multiple lines.

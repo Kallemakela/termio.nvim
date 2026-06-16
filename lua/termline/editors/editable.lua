@@ -86,10 +86,10 @@ local function refresh_editable_state(buf, cursor)
   vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
 end
 
----Return write guard delay for a prompt.
----@param prompt? string
+---Return write guard delay for a command.
+---@param command string
 ---@return integer
-function M.get_write_guard_delay_ms(prompt)
+function M.get_write_guard_delay_ms(command)
   return 50
 end
 
@@ -98,21 +98,21 @@ end
 ---@return boolean did_sync
 function M.write(buf, target)
   local bufinfo = M.buffers[buf]
-  local prompt = api.buffers[buf] and api.buffers[buf].prompt or nil
-  local delay = M.get_write_guard_delay_ms(prompt)
   bufinfo.has_unsynced_edits = false
   target = target or {}
+  if target.command == nil then
+    target = read_editor_state(buf, vim.api.nvim_get_current_win())
+  end
+  local command = target.command
+  local cursor = target.cursor
+  local delay = M.get_write_guard_delay_ms(command)
   log.debug("editable.write.start", {
     buf = buf,
     has_target = next(target) ~= nil,
     delay = delay,
-    prompt = prompt,
     sync_block_reason = bufinfo.sync_block_reason,
     has_unsynced_edits = bufinfo.has_unsynced_edits,
   })
-  if target.command == nil then
-    target = read_editor_state(buf, vim.api.nvim_get_current_win())
-  end
   -- Terminal redraw after sync can emit TextChanged events into the same buffer.
   -- Keep a short guard so those redraws are not treated as fresh user edits.
   set_sync_block_reason(buf, "write")
@@ -123,8 +123,6 @@ function M.write(buf, target)
     log.debug("editable.writing.stop", { buf = buf })
   end, delay)
   local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
-  local command = target.command
-  local cursor = target.cursor
   local did_sync = shell_state.command ~= command
     or (cursor ~= nil and shell_state.cursor ~= cursor)
   if did_sync then
