@@ -2,32 +2,29 @@
 
 > [!NOTE]
 > WIP. Expect bugs.
-Edit the current zsh command in Neovim.
 
-This branch is zsh-only.
+Read and write the current zsh state in Neovim.
+
+This branch is now a minimal zsh api + editor.
 No overlay editor.
 No sync module.
-Public API is `read_command()` and `write_command()`.
+Only `read_command()` and `write_command()`.
+Old general chansend based implementation is on branch `old`.
+The reasoning for making it zsh only is that this gets rid of chansend, which causes jitter when editing commands. Zsh only implementation simply overwrites the zle state to sync.
+
+Maybe easy to add support for other shells as well?
 
 ## Setup
 
+In zsh startup, e.g. in `~/.zshrc`:
+```bash
+source /path/to/termline.nvim/shell/termline.zsh
+```
+
+In neovim:
 ```lua
 require("termline").setup()
 ```
-
-Press `<Esc>` on a terminal buffer to open the editor.
-
-## Shell integration
-
-Shell integration scripts add more markers to the shell output so we can parse
-what part of the displayed text is the command and what is, e.g., shell
-completions. Enable by sourcing the corresponding script on startup. Example
-for zsh [script](./shell/termline.zsh):
-
-```zsh
-source /path/to/termline.nvim/shell/termline.zsh
-```
-Only zsh supported now. Should be easy to add support for other shells as well.
 
 ## Config
 
