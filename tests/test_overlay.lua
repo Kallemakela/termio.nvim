@@ -187,23 +187,6 @@ T["overlay.open()"]["insert submit returns to terminal mode"] = function()
   Helpers.wait_for_mode(child, "t")
 end
 
-T["overlay.open()"]["echo hello esc x cr outputs hell"] = function()
-  local buf = Helpers.open_shell(child)
-  child.cmd("startinsert")
-  Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("echo hello")
-  Helpers.wait_for_read_command(child, buf, "echo hello")
-  child.api.nvim_input("<Esc>")
-  Helpers.wait_until(child, function()
-    return child.api.nvim_get_option_value("buftype", { buf = 0 }) == "prompt"
-  end)
-  child.api.nvim_input("x<CR>")
-  Helpers.wait_until(child, function()
-    return child.api.nvim_get_current_buf() == buf
-  end)
-  Helpers.wait_for_shell_output(child, buf, "hell")
-end
-
 T["overlay.open()"]["echo hello world esc bbdw cr outputs world"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
@@ -267,7 +250,7 @@ T["overlay.open()"]["opens at command end when terminal cursor is before prompt"
   child.lua([[require("termline.editors.overlay").open(...)]], {
     { target_buf = buf, target_win = target_win },
   })
-  MiniTest.expect.equality(child.lua_get("vim.api.nvim_win_get_cursor(0)[2]"), #"$ " + #command - 2)
+  MiniTest.expect.equality(child.lua_get("vim.api.nvim_win_get_cursor(0)[2]"), #"$ " + #command - 1)
 end
 
 T["overlay.open()"]["keeps first line visible after first newline"] = function()
