@@ -38,6 +38,7 @@ termline_shell_write_buffer() {
     CURSOR="${#BUFFER}"
   fi
   zle -R
+  printf '\e]633;W\a'
 }
 zle -N termline-write-buffer termline_shell_write_buffer
 

@@ -3,6 +3,7 @@ local api = require("termline.api")
 local helpers = require("termline.util.helpers")
 local log = require("termline.util.log")
 local M = {}
+local CHANGE_OPERATOR_FUNC = "v:lua.require'termline.editors.editable'.apply_change_operator"
 
 local function build_context(ctx)
   ctx = ctx or {}
@@ -100,8 +101,10 @@ function M.write(buf, target)
   local bufinfo = M.buffers[buf]
   bufinfo.has_unsynced_edits = false
   target = target or {}
-  if target.command == nil then
-    target = read_editor_state(buf, vim.api.nvim_get_current_win())
+  if target.command == nil or target.cursor == nil then
+    local current = read_editor_state(buf, vim.api.nvim_get_current_win())
+    target.command = target.command or current.command
+    target.cursor = target.cursor or current.cursor
   end
   local command = target.command
   local cursor = target.cursor
@@ -172,9 +175,10 @@ local function mark_unsynced_edit(buf)
 end
 
 ---@param buf integer
-local function store_operator_start_cursor(buf)
-  M.buffers[buf].operator_start_cursor =
-    read_editor_state(buf, vim.api.nvim_get_current_win()).cursor
+---@param target? { command?: string, cursor?: integer }
+local function sync_change_and_enter_insert(buf, target)
+  M.write(buf, target)
+  vim.cmd.startinsert()
 end
 
 ---@param buf integer
@@ -193,27 +197,34 @@ local function command_offset_from_cursor(buf, cursor)
 end
 
 ---@param buf integer
-local function store_visual_start_cursor(buf)
-  local visual_pos = vim.fn.getpos("v")
-  local current_cursor = vim.api.nvim_win_get_cursor(0)
-  local visual_cursor = { visual_pos[2], visual_pos[3] - 1 }
-  M.buffers[buf].operator_start_cursor = math.min(
-    command_offset_from_cursor(buf, visual_cursor),
-    command_offset_from_cursor(buf, current_cursor)
-  )
+---@return integer
+local function operator_start_offset(buf)
+  local mark = vim.api.nvim_buf_get_mark(buf, "[")
+  return command_offset_from_cursor(buf, mark)
 end
 
----@param buf integer
----@return { command: string, cursor: integer }
-local function build_change_target(buf)
-  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
-  local start_offset = M.buffers[buf].operator_start_cursor or shell_state.cursor or 0
-  local deleted_text = vim.fn.getreg('"')
-  return {
-    command = shell_state.command:sub(1, start_offset)
-      .. shell_state.command:sub(start_offset + #deleted_text + 1),
-    cursor = start_offset,
-  }
+---@param motion_type string
+local function delete_operator_range(motion_type)
+  -- `g@` stores the resolved motion range in `[ and `]. Delete that range
+  -- after Vim has handled the motion instead of reimplementing motions here.
+  vim.cmd("normal! " .. (motion_type == "line" and "`[V`]d" or "`[v`]d"))
+end
+
+---Delete the range captured by `g@` and continue editing in terminal insert mode.
+---@param motion_type string
+function M.apply_change_operator(motion_type)
+  local buf = vim.api.nvim_get_current_buf()
+  local cursor = operator_start_offset(buf)
+  mark_unsynced_edit(buf)
+  delete_operator_range(motion_type)
+  sync_change_and_enter_insert(buf, { cursor = cursor })
+end
+
+local function start_change_operator()
+  -- `c` needs to wait for a motion. `g@` lets Vim collect that motion and call
+  -- `apply_change_operator()` with the resulting range.
+  vim.go.operatorfunc = CHANGE_OPERATOR_FUNC
+  return "g@"
 end
 
 ---Handle terminal text changes with the concurrent-write guard.
@@ -394,40 +405,29 @@ M.setup = function(config)
       end, { buffer = args.buf })
       vim.keymap.set("n", "d", function()
         log.debug("editable.key.d", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        store_operator_start_cursor(args.buf)
         mark_unsynced_edit(args.buf)
         return "d"
       end, { buffer = args.buf, expr = true })
       vim.keymap.set("n", "c", function()
         log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        store_operator_start_cursor(args.buf)
-        return "c"
+        return start_change_operator()
+      end, { buffer = args.buf, expr = true })
+      vim.keymap.set("n", "cw", function()
+        log.debug("editable.key.cw", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
+        -- Vim treats `cw` like `ce`, preserving the following whitespace.
+        return start_change_operator() .. "e"
       end, { buffer = args.buf, expr = true })
       vim.keymap.set("n", "C", function()
         log.debug("editable.key.C", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        store_operator_start_cursor(args.buf)
-        return "C"
+        return start_change_operator() .. "$"
       end, { buffer = args.buf, expr = true })
       vim.keymap.set("x", "c", function()
         log.debug(
           "editable.key.visual_c",
           { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
         )
-        store_visual_start_cursor(args.buf)
-        return "c"
+        return start_change_operator()
       end, { buffer = args.buf, expr = true })
-      vim.api.nvim_create_autocmd("TextYankPost", {
-        group = editgroup,
-        buffer = args.buf,
-        callback = function(args)
-          if vim.v.event.operator ~= "c" then
-            return
-          end
-          log.debug("editable.text_yank_post.c", { buf = args.buf, deleted = vim.fn.getreg('"') })
-          M.write(args.buf, build_change_target(args.buf))
-          vim.cmd.startinsert()
-        end,
-      })
       vim.api.nvim_create_autocmd("TextChanged", {
         buffer = args.buf,
         group = editgroup,

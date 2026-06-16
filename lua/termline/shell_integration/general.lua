@@ -52,6 +52,10 @@ function M.handle_term_request(args)
   end
   if args.data.sequence:match("^\27]633;Q") then
     update_shell_query(args.data.sequence, state)
+    return
+  end
+  if args.data.sequence:match("^\27]633;W") then
+    state.shell_write_pending = false
   end
 end
 

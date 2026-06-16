@@ -197,17 +197,47 @@ T["editable edit"]["bbved deletes visual selection from editor draft"] = functio
   MiniTest.expect.equality(read_editable_command(buf), "echo  world")
 end
 
-T["editable edit"]["bbbcw<Esc> updates wrapped command"] = function()
+T["editable edit"]["bbcw<Esc> updates command"] = function()
   local buf = Helpers.open_shell(child)
   local command = "echo hello world there friend"
-  child.set_size(24, 12)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input(command)
   Helpers.wait_for_read_command(child, buf, command)
   enter_editable_normal_mode(buf)
-  child.api.nvim_input("bbbcw<Esc>")
+  child.api.nvim_input("bbcw<Esc>")
   Helpers.wait_for_read_command(child, buf, "echo hello world  friend")
+end
+
+T["editable edit"]["visual delete from wrapped command keeps last word"] = function()
+  local buf = Helpers.open_shell(child)
+  local last_word = "omega"
+  local command = "echo lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua "
+    .. last_word
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  child.api.nvim_input("<Esc>bbev[[EEbhd")
+  Helpers.wait_for_mode(child, "nt")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("modifiable", { buf = buf })
+  end)
+  Helpers.wait_for_editable_command(child, buf, "echo " .. last_word)
+end
+
+T["editable edit"]["visual change from wrapped command keeps last word"] = function()
+  local buf = Helpers.open_shell(child)
+  local last_word = "omega"
+  local command = "echo lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua "
+    .. last_word
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  child.api.nvim_input("<Esc>bbev[[EEbhc")
+  Helpers.wait_for_mode(child, "t")
+  Helpers.wait_for_read_command(child, buf, "echo " .. last_word)
 end
 
 T["editable edit"]["bbdw updates editor draft and stays in normal mode"] = function()

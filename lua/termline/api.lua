@@ -86,17 +86,18 @@ function M.write_command(command, buf, cursor)
     error("termline: command must be a string")
   end
   local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
-  send_shell_control(target, { "write", cursor and tostring(cursor) or "", shell_command })
+  local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
+  local state = helpers.ensure_buffer_state(M.buffers, target)
+  state.shell_write_pending = true
+  send_shell_control(target, { "write", tostring(shell_cursor), shell_command })
   local applied = vim.wait(500, function()
-    local ok, current = pcall(M.read_command, target, 100)
-    return ok and current == shell_command
-  end, 10)
+    return state.shell_write_pending == false
+  end, 5)
   if not applied then
     error("termline: shell command write timed out")
   end
-  local state = helpers.ensure_buffer_state(M.buffers, target).shell_state
-  state.command = shell_command
-  state.cursor = cursor or #shell_command
+  state.shell_state.command = shell_command
+  state.shell_state.cursor = shell_cursor
 end
 
 ---@param win integer
