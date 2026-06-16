@@ -37,9 +37,6 @@ local function read_editor_state(buf, win)
   }
 end
 
----@param buf integer
----@param from_cursor integer
----@param to_cursor integer
 ---Return the editable command zone in the terminal buffer.
 ---@param buf? integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
@@ -87,13 +84,6 @@ local function refresh_editable_state(buf, cursor)
   vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
 end
 
----Return write guard delay for a command.
----@param command string
----@return integer
-function M.get_write_guard_delay_ms(command)
-  return 50
-end
-
 ---@param buf integer
 ---@param target? { command?: string, cursor?: integer }
 ---@return boolean did_sync
@@ -108,7 +98,7 @@ function M.write(buf, target)
   end
   local command = target.command
   local cursor = target.cursor
-  local delay = M.get_write_guard_delay_ms(command)
+  local delay = 50
   log.debug("editable.write.start", {
     buf = buf,
     has_target = next(target) ~= nil,
@@ -133,19 +123,6 @@ function M.write(buf, target)
   end
   log.debug("editable.write.done", { buf = buf, did_sync = did_sync })
   return did_sync
-end
-
----@param buf integer
----@param cursor integer
-function M.set_term_cursor(buf, cursor)
-  local to_cursor = cursor - M.buffers[buf].promt_cursor[2]
-  log.debug("editable.set_term_cursor", {
-    buf = buf,
-    cursor = cursor,
-    prompt_cursor = M.buffers[buf].promt_cursor,
-    to_cursor = to_cursor,
-  })
-  M.write(buf, { command = api.read_command(buf), cursor = to_cursor })
 end
 
 local function override_state(current, target)
@@ -326,29 +303,13 @@ local function apply_keymaps(buf)
   end
 end
 
----@class Promt
----@field keybinds? Keybinds
-
----@class Keybinds
----@field clear_current_line string
----@field forward_char string
----@field goto_line_start string
-
 ---@class EditableTermConfig
----@field default_keybinds? Keybinds
----@field promts? {[string]: Promt}
+---@field promts? table<string, true>
 
 ---@param config EditableTermConfig
 M.setup = function(config)
   M.buffers = {}
   M.promts = (config or {}).promts
-  M.default_keybinds = (config or {}).default_keybinds
-    or {
-      clear_current_line = "<C-e><C-u>",
-      forward_char = "<C-f>",
-      goto_line_start = "<C-a>",
-      goto_line_end = "<C-e>",
-    }
   vim.api.nvim_create_autocmd("TermOpen", {
     group = vim.api.nvim_create_augroup("editable-term", {}),
     callback = function(args)
@@ -361,7 +322,6 @@ M.setup = function(config)
         vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
       M.buffers[args.buf] = {
         has_unsynced_edits = false,
-        keybinds = M.default_keybinds,
         sync_block_reason = "term_leave",
       }
       vim.keymap.set("n", "A", function()
@@ -447,13 +407,12 @@ M.setup = function(config)
           local cursor = vim.api.nvim_win_get_cursor(0)
           log.debug("editable.term_leave", { buf = args.buf, line = ln, cursor = cursor })
           vim.api.nvim_win_set_cursor(0, cursor)
-          line_num = cursor[1]
+          local line_num = cursor[1]
           if M.promts ~= nil and ln ~= nil then
-            for pattern, promt in pairs(M.promts) do
-              start, ent = ln:find(pattern)
+            for pattern in pairs(M.promts) do
+              local start, ent = ln:find(pattern)
               if start ~= nil then
                 bufinfo.promt_cursor = { line_num, ent }
-                bufinfo.keybinds = promt.keybinds or M.default_keybinds
                 log.debug("editable.term_leave.prompt_match", {
                   buf = args.buf,
                   pattern = pattern,

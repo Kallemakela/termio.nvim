@@ -115,18 +115,6 @@ T["editable edit"]["submit runs command in insert mode"] = function()
   Helpers.wait_for_shell_output(child, buf, "insert")
 end
 
-T["editable edit"]["set_term_cursor moves shell cursor"] = function()
-  local buf = Helpers.open_shell(child)
-  child.cmd("startinsert")
-  Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("echo hello world")
-  Helpers.wait_for_read_command(child, buf, "echo hello world")
-  child.lua([[require("termline.editors.editable").set_term_cursor(...)]], { buf, 7 })
-  child.wait(100)
-  child.api.nvim_input("goodbye ")
-  Helpers.wait_for_read_command(child, buf, "echo goodbye hello world")
-end
-
 T["editable edit"]["bbcw updates read_command"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
