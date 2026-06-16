@@ -1,14 +1,43 @@
 local M = {}
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
+local log = require("termline.util.log")
 
-local function signal_shell(buf, signal)
+---@param buf integer
+---@return integer
+local function assert_shell_pid(buf)
   local job_id = vim.b[buf].terminal_job_id
   local pid = job_id and vim.fn.jobpid(job_id)
   if not pid or pid <= 0 then
     error("termline: missing terminal job pid")
   end
-  vim.uv.kill(pid, signal)
+  return pid
+end
+
+local function signal_shell(buf, signal)
+  vim.uv.kill(assert_shell_pid(buf), signal)
+end
+
+---@param buf integer
+---@return string
+local function shell_control_file(buf)
+  return (vim.env.TMPDIR or "/tmp") .. "/termline.nvim." .. assert_shell_pid(buf) .. ".control"
+end
+
+---@param buf integer
+---@param lines string[]
+---@return string
+local function send_shell_control(buf, lines)
+  local file = shell_control_file(buf)
+  vim.fn.writefile(lines, file, "b")
+  signal_shell(buf, vim.uv.constants.SIGUSR2)
+  return file
+end
+
+---@param buf integer
+---@return boolean
+local function can_write_active_zle(buf)
+  return vim.api.nvim_get_current_buf() == buf and vim.api.nvim_get_mode().mode:sub(1, 1) == "t"
 end
 
 M.buffers = {}
@@ -202,7 +231,10 @@ end
 function M.clear_completion_suggestions(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  signal_shell(target, vim.uv.constants.SIGUSR2)
+  local file = send_shell_control(target, { "clear-completions" })
+  vim.wait(100, function()
+    return vim.fn.filereadable(file) == 0
+  end, 5)
 end
 
 ---Write command text. If omitted, reuse the last cached read value.
@@ -219,7 +251,40 @@ function M.write_command(command, buf)
     end
     shell_state.command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   end
+  if M.should_read_command_shell(target) and can_write_active_zle(target) then
+    local should_submit = shell_state.command:sub(-1) == "\r"
+    local shell_command = should_submit and shell_state.command:sub(1, -2) or shell_state.command
+    local ok, err = pcall(M.write_command_shell, shell_command, nil, target)
+    if ok then
+      if should_submit then
+        helpers.send_keys("<CR>", target)
+      end
+      return
+    end
+    log.debug("write_command_shell fallback", { buf = target, error = err })
+  end
   helpers.send_keys(shell_state.command, target)
+end
+
+---Write command text directly to zsh ZLE BUFFER.
+---@param command string
+---@param cursor? integer
+---@param buf? integer
+function M.write_command_shell(command, cursor, buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  if type(command) ~= "string" then
+    error("termline: command must be a string")
+  end
+  local cursor_text = cursor and tostring(cursor) or ""
+  send_shell_control(target, { "write", cursor_text, command })
+  local applied = vim.wait(200, function()
+    local ok, current = pcall(M.read_command_visible, target)
+    return ok and current == command
+  end, 10)
+  if not applied then
+    error("termline: shell command write timed out")
+  end
 end
 
 ---Clear the current command.

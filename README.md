@@ -100,7 +100,7 @@ require("termline").setup({
 - `api.read_command_shell` queries zsh ZLE `BUFFER` through shell integration.
 - `api.clear_completion_suggestions` hides zsh completion suggestions below the prompt.
 - `api.clear_command` sends `clear_current_line` with a `C-c` fallback if the command stays non-empty.
-- `api.write_command` chansends the given command text. 
+- `api.write_command` writes through zsh ZLE when supported, otherwise chansends the given command text.
 - `sync.sync` clears and writes changed command text, and moves the cursor when `target.cursor` is set. See the editors for usage.
 
 

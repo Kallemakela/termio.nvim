@@ -80,4 +80,13 @@ T["shell integration"]["test API clears zsh tab suggestions"] = function()
   end)
 end
 
+T["shell integration"]["test write command replaces zsh buffer directly"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.api.nvim_input("echo old")
+  Helpers.wait_for_read_command(child, buf, "echo old")
+  child.lua([[require("termline").write_command("echo replacement", ...)]], { buf })
+  Helpers.wait_for_read_command(child, buf, "echo replacement")
+end
+
 return T
