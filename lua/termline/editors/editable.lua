@@ -21,9 +21,19 @@ local function set_sync_block_reason(buf, reason)
   M.buffers[buf].sync_block_reason = reason
 end
 
-local function read_live_buffer_state(buf, win)
+---Read the editable draft command from the terminal buffer.
+---@param buf integer
+---@return string
+function M.read_command(buf)
+  local prompt_cursor = M.buffers[buf].promt_cursor
+  local lines = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, -1, false)
+  lines[1] = (lines[1] or ""):sub(prompt_cursor[2] + 1)
+  return table.concat(lines, "")
+end
+
+local function read_editor_state(buf, win)
   return {
-    command = api.read_command(buf),
+    command = M.read_command(buf),
     cursor = api.command_cursor(win, buf)[2],
   }
 end
@@ -102,7 +112,7 @@ function M.write(buf, target, opts)
     has_unsynced_edits = bufinfo.has_unsynced_edits,
   })
   if target.command == nil then
-    target = read_live_buffer_state(buf, vim.api.nvim_get_current_win())
+    target = read_editor_state(buf, vim.api.nvim_get_current_win())
   end
   if opts and opts.send then
     target =
@@ -154,7 +164,7 @@ end
 
 local function enter_insert_with_target(buf, target_state)
   local target =
-    override_state(read_live_buffer_state(buf, vim.api.nvim_get_current_win()), target_state)
+    override_state(read_editor_state(buf, vim.api.nvim_get_current_win()), target_state)
   M.write(buf, target)
   vim.cmd.startinsert()
 end
@@ -190,7 +200,7 @@ end
 ---@param finish integer[]
 ---@return { command: string, cursor: integer }
 local function build_delete_target(buf, start, finish)
-  local command = api.read_command(buf)
+  local command = M.read_command(buf)
   local start_offset = command_offset_from_mark(buf, start)
   local finish_offset = command_offset_from_mark(buf, finish)
   return {
@@ -209,6 +219,14 @@ function M.handle_text_changed(buf)
     has_unsynced_edits = bufinfo.has_unsynced_edits,
     line = vim.api.nvim_get_current_line(),
   })
+  if not bufinfo.promt_cursor then
+    log.debug("editable.text_changed.skip", {
+      buf = buf,
+      sync_block_reason = bufinfo.sync_block_reason,
+      has_unsynced_edits = bufinfo.has_unsynced_edits,
+    })
+    return
+  end
   if bufinfo.sync_block_reason == "term_leave" then
     set_sync_block_reason(buf, nil)
     log.debug("editable.text_changed.skip", {
@@ -241,7 +259,7 @@ function M.open(ctx)
     api.clear_completion_suggestions(buf)
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
-  buffer_state.shell_state = read_live_buffer_state(buf, win)
+  api.read_command(buf)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   vim.cmd("stopinsert")
   vim.schedule(function()

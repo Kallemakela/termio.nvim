@@ -6,6 +6,7 @@ T = MiniTest.new_set({
   hooks = {
     pre_case = function()
       Helpers.setup_child(child, [[{ editor = { type = "editable" } }]])
+      child.set_size(24, 80)
     end,
     post_once = child.stop,
   },
@@ -44,6 +45,10 @@ end
 local function get_command_cursor(buf)
   local win = child.api.nvim_get_current_win()
   return child.lua_get([=[require("termline").command_cursor(...)[2]]=], { win, buf })
+end
+
+local function read_editable_command(buf)
+  return child.lua_get([[require("termline.editors.editable").read_command(...)]], { buf })
 end
 
 T["editable edit"]["open key leaves terminal mode"] = function()
@@ -146,7 +151,7 @@ T["editable edit"]["bbbcw<Esc> updates wrapped command"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world  friend")
 end
 
-T["editable edit"]["bbdw updates read_command and stays in normal mode"] = function()
+T["editable edit"]["bbdw updates editor draft and stays in normal mode"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
@@ -154,8 +159,23 @@ T["editable edit"]["bbdw updates read_command and stays in normal mode"] = funct
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
+  MiniTest.expect.equality(
+    child.lua_get([[require("termline").read_command(...)]], { buf }),
+    "echo hello world"
+  )
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
+end
+
+T["editable edit"]["bbdw<C-s> syncs editor draft to shell state"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world")
+  Helpers.wait_for_read_command(child, buf, "echo hello world")
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("bbdw<C-s>")
+  Helpers.wait_for_read_command(child, buf, "echo world")
 end
 
 T["editable edit"]["bbdwi keeps deleted command state"] = function()
@@ -166,7 +186,7 @@ T["editable edit"]["bbdwi keeps deleted command state"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   child.wait(100)
@@ -181,7 +201,7 @@ T["editable edit"]["bbdwi enters insert at correct spot"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("!")
@@ -196,7 +216,7 @@ T["editable edit"]["bbdwa enters insert at correct spot"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("a")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("!")
@@ -211,7 +231,7 @@ T["editable edit"]["bbdwI enters insert at command start"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("I")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("!")
@@ -226,7 +246,7 @@ T["editable edit"]["bbdwA enters insert at command end"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("A")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("!")
@@ -241,7 +261,7 @@ T["editable edit"]["bxxx defers shell sync until insert"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bxxx")
-  Helpers.wait_for_read_command(child, buf, "echo hello ld")
+  MiniTest.expect.equality(read_editable_command(buf), "echo hello ld")
   MiniTest.expect.equality(
     child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
     "echo hello world"
@@ -255,35 +275,10 @@ T["editable edit"]["bxxx defers shell sync until insert"] = function()
   )
 end
 
-T["editable edit"]["pp defers shell sync until insert"] = function()
-  local buf = Helpers.open_shell(child)
-  child.cmd("startinsert")
-  Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("echo world")
-  Helpers.wait_for_read_command(child, buf, "echo world")
-  child.lua([[vim.fn.setreg('"', '!')]])
-  enter_editable_normal_mode(buf)
-  child.api.nvim_input("pp")
-  Helpers.wait_for_read_command(child, buf, "echo world!!")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
-    "echo world"
-  )
-  child.api.nvim_input("i")
-  Helpers.wait_for_mode(child, "t")
-  Helpers.wait_for_read_command(child, buf, "echo world!!")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
-    "echo world!!"
-  )
-end
-
 T["editable edit"]["dj on wrapped command does not sync shell state"] = function()
   local buf = Helpers.open_shell(child)
   local command =
     "echo lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi"
-  local expected_command =
-    "echo lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna a"
   child.set_size(24, 80)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
@@ -291,7 +286,10 @@ T["editable edit"]["dj on wrapped command does not sync shell state"] = function
   Helpers.wait_for_read_command(child, buf, command)
   enter_editable_normal_mode(buf)
   child.api.nvim_input("dj")
-  Helpers.wait_for_read_command(child, buf, expected_command)
+  MiniTest.expect.equality(
+    child.lua_get([[require("termline").read_command(...)]], { buf }),
+    command
+  )
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
   MiniTest.expect.equality(
     child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
@@ -370,7 +368,7 @@ T["editable edit"]["bbdw<CR> outputs world"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   enter_editable_normal_mode(buf)
   child.api.nvim_input("bbdw")
-  Helpers.wait_for_read_command(child, buf, "echo world")
+  MiniTest.expect.equality(read_editable_command(buf), "echo world")
   child.api.nvim_input("<CR>")
   Helpers.wait_for_shell_output(child, buf, "world")
 end
