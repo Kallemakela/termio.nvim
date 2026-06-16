@@ -227,6 +227,35 @@ Helpers.wait_for_read_command = function(child, buf, expected, timeout)
   error(string.format("expected read_command %q, got %q", expected, got or "<nil>"))
 end
 
+Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
+  local got
+  local read_error
+  local ok = pcall(function()
+    Helpers.wait_until(child, function()
+      local did_read, result = pcall(function()
+        return child.lua_get([[require("termline.editors.editable").read_command(...)]], { buf })
+      end)
+      if not did_read then
+        read_error = result
+        return false
+      end
+      got = result
+      return got == expected
+    end, timeout)
+  end)
+  if ok then
+    return
+  end
+  error(
+    string.format(
+      "expected editable command %q, got %q (%s)",
+      expected,
+      got or "<nil>",
+      read_error or "no read error"
+    )
+  )
+end
+
 Helpers.wait_for_shell_output = function(child, buf, expected, timeout)
   local output
   local text

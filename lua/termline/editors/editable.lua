@@ -1,8 +1,6 @@
 local config = require("termline.config")
 local api = require("termline.api")
-local sync = require("termline.sync")
 local helpers = require("termline.util.helpers")
-local term_codes = require("termline.util.helpers").term_codes
 local log = require("termline.util.log")
 local M = {}
 
@@ -38,6 +36,9 @@ local function read_editor_state(buf, win)
   }
 end
 
+---@param buf integer
+---@param from_cursor integer
+---@param to_cursor integer
 ---Return the editable command zone in the terminal buffer.
 ---@param buf? integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
@@ -94,9 +95,8 @@ end
 
 ---@param buf integer
 ---@param target? { command?: string, cursor?: integer }
----@param opts? { send?: boolean }
 ---@return boolean did_sync
-function M.write(buf, target, opts)
+function M.write(buf, target)
   local bufinfo = M.buffers[buf]
   local prompt = api.buffers[buf] and api.buffers[buf].prompt or nil
   local delay = M.get_write_guard_delay_ms(prompt)
@@ -105,7 +105,6 @@ function M.write(buf, target, opts)
   log.debug("editable.write.start", {
     buf = buf,
     has_target = next(target) ~= nil,
-    send = opts and opts.send,
     delay = delay,
     prompt = prompt,
     sync_block_reason = bufinfo.sync_block_reason,
@@ -113,10 +112,6 @@ function M.write(buf, target, opts)
   })
   if target.command == nil then
     target = read_editor_state(buf, vim.api.nvim_get_current_win())
-  end
-  if opts and opts.send then
-    target =
-      vim.tbl_extend("force", target, { command = (target.command or "") .. "\r", cursor = nil })
   end
   -- Terminal redraw after sync can emit TextChanged events into the same buffer.
   -- Keep a short guard so those redraws are not treated as fresh user edits.
@@ -127,8 +122,14 @@ function M.write(buf, target, opts)
     end
     log.debug("editable.writing.stop", { buf = buf })
   end, delay)
-  local shell_state = api.buffers[buf].shell_state
-  local did_sync = sync.sync(target, buf, shell_state)
+  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
+  local command = target.command
+  local cursor = target.cursor
+  local did_sync = shell_state.command ~= command
+    or (cursor ~= nil and shell_state.cursor ~= cursor)
+  if did_sync then
+    api.write_command(command, buf, cursor)
+  end
   log.debug("editable.write.done", { buf = buf, did_sync = did_sync })
   return did_sync
 end
@@ -136,16 +137,14 @@ end
 ---@param buf integer
 ---@param cursor integer
 function M.set_term_cursor(buf, cursor)
-  local from_cursor = vim.api.nvim_win_get_cursor(0)[2] - M.buffers[buf].promt_cursor[2]
   local to_cursor = cursor - M.buffers[buf].promt_cursor[2]
   log.debug("editable.set_term_cursor", {
     buf = buf,
     cursor = cursor,
     prompt_cursor = M.buffers[buf].promt_cursor,
-    from_cursor = from_cursor,
     to_cursor = to_cursor,
   })
-  sync.sync({ command = nil, cursor = to_cursor }, buf, { command = nil, cursor = from_cursor })
+  M.write(buf, { command = api.read_command(buf), cursor = to_cursor })
 end
 
 local function override_state(current, target)
@@ -175,36 +174,46 @@ local function mark_unsynced_edit(buf)
 end
 
 ---@param buf integer
----@param mark integer[]
----@return integer
-local function command_offset_from_mark(buf, mark)
-  local prompt_cursor = M.buffers[buf].promt_cursor
-  local lines = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, mark[1], false)
-  if #lines == 0 then
-    return 0
-  end
-  lines[1] = lines[1]:sub(prompt_cursor[2] + 1)
-  local offset = 0
-  for i = 1, #lines - 1 do
-    offset = offset + #lines[i]
-  end
-  if mark[1] == prompt_cursor[1] then
-    return offset + mark[2] - prompt_cursor[2]
-  end
-  return offset + mark[2]
+local function store_operator_start_cursor(buf)
+  M.buffers[buf].operator_start_cursor =
+    read_editor_state(buf, vim.api.nvim_get_current_win()).cursor
 end
 
----Builds a target state with a section deleted, used for 'c' operator to separate the delete and insert phases.
 ---@param buf integer
----@param start integer[]
----@param finish integer[]
+---@param cursor integer[]
+---@return integer
+local function command_offset_from_cursor(buf, cursor)
+  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
+  local offset = 0
+  for row = prompt_row, cursor[1] do
+    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+    local start_col = row == prompt_row and prompt_col or 0
+    local end_col = row == cursor[1] and cursor[2] or #line
+    offset = offset + math.max(end_col - start_col, 0)
+  end
+  return offset
+end
+
+---@param buf integer
+local function store_visual_start_cursor(buf)
+  local visual_pos = vim.fn.getpos("v")
+  local current_cursor = vim.api.nvim_win_get_cursor(0)
+  local visual_cursor = { visual_pos[2], visual_pos[3] - 1 }
+  M.buffers[buf].operator_start_cursor = math.min(
+    command_offset_from_cursor(buf, visual_cursor),
+    command_offset_from_cursor(buf, current_cursor)
+  )
+end
+
+---@param buf integer
 ---@return { command: string, cursor: integer }
-local function build_delete_target(buf, start, finish)
-  local command = M.read_command(buf)
-  local start_offset = command_offset_from_mark(buf, start)
-  local finish_offset = command_offset_from_mark(buf, finish)
+local function build_change_target(buf)
+  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
+  local start_offset = M.buffers[buf].operator_start_cursor or shell_state.cursor or 0
+  local deleted_text = vim.fn.getreg('"')
   return {
-    command = command:sub(1, start_offset) .. command:sub(finish_offset + 2),
+    command = shell_state.command:sub(1, start_offset)
+      .. shell_state.command:sub(start_offset + #deleted_text + 1),
     cursor = start_offset,
   }
 end
@@ -255,11 +264,9 @@ function M.open(ctx)
   if not helpers.is_enabled_terminal(buf) then
     error("termline: terminal buffer name does not match editor.terminal_name_pattern")
   end
-  if api.should_read_command_shell(buf) then
-    local ok, err = pcall(api.clear_completion_suggestions, buf)
-    if not ok then
-      log.debug("editable clear completions skipped", { buf = buf, error = err })
-    end
+  local ok, err = pcall(api.clear_completion_suggestions, buf)
+  if not ok then
+    log.debug("editable clear completions skipped", { buf = buf, error = err })
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   api.read_command(buf)
@@ -281,9 +288,10 @@ local function apply_keymaps(buf)
       local mode = vim.api.nvim_get_mode().mode
       log.debug("editable.key.submit", { buf = buf, mode = mode })
       if mode:sub(1, 1) == "t" then
-        vim.fn.chansend(vim.bo.channel, term_codes("<CR>"))
+        helpers.send_keys("<CR>", buf)
       else
-        M.write(buf, nil, { send = true })
+        M.write(buf)
+        helpers.send_keys("<CR>", buf)
       end
       vim.cmd("startinsert")
     end,
@@ -388,8 +396,22 @@ M.setup = function(config)
       end, { buffer = args.buf })
       vim.keymap.set("n", "d", function()
         log.debug("editable.key.d", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
+        store_operator_start_cursor(args.buf)
         mark_unsynced_edit(args.buf)
         return "d"
+      end, { buffer = args.buf, expr = true })
+      vim.keymap.set("n", "c", function()
+        log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
+        store_operator_start_cursor(args.buf)
+        return "c"
+      end, { buffer = args.buf, expr = true })
+      vim.keymap.set("x", "c", function()
+        log.debug(
+          "editable.key.visual_c",
+          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
+        )
+        store_visual_start_cursor(args.buf)
+        return "c"
       end, { buffer = args.buf, expr = true })
       vim.api.nvim_create_autocmd("TextYankPost", {
         group = editgroup,
@@ -398,12 +420,8 @@ M.setup = function(config)
           if vim.v.event.operator ~= "c" then
             return
           end
-          -- Unlike `d`, `c` immediately continues with replacement input,
-          -- so we must sync the delete phase before that happens.
-          local start = vim.api.nvim_buf_get_mark(args.buf, "[")
-          local finish = vim.api.nvim_buf_get_mark(args.buf, "]")
-          log.debug("editable.text_yank_post.c", { buf = args.buf, start = start, finish = finish })
-          M.write(args.buf, build_delete_target(args.buf, start, finish))
+          log.debug("editable.text_yank_post.c", { buf = args.buf, deleted = vim.fn.getreg('"') })
+          M.write(args.buf, build_change_target(args.buf))
           vim.cmd.startinsert()
         end,
       })
