@@ -93,6 +93,6 @@ require("blink.cmp").setup({
 })
 ```
 
-## [Known issues/Planned features/Roadmap/TODO](/doc/todo.md)
+## [Known issues/Planned features/Roadmap/TODO](./doc/todo.md)
 
-## [Related projects](/doc/related-projects.md)
+## [Related projects](./doc/related-projects.md)

@@ -6,8 +6,8 @@ end
 
 function M.start()
   local initial_wait_ms = 200
-  local key_wait_ms = 50
-  local command_wait_ms = 300
+  local key_wait_ms = 40
+  local command_wait_ms = 200
   local submit_wait_ms = 1000
   local delay = initial_wait_ms
   local function step(wait, keys)
@@ -27,65 +27,45 @@ function M.start()
     end
   end
 
-  step(0, "")
-  type_keys("c", "h", "o", " ", "h", "e", "l", "l", "o", " ", "w", "o", "r", "l", "d")
-  step(command_wait_ms, "<Esc>")
-  command_keys("b", "b", "cw")
-  type_keys("g", "o", "o", "d", "b", "y", "e", "<Esc>")
-  step(50, "")
-  command_keys("A")
+  step(1000, "")
+  type_keys(" ", "w", "o", "r", "r", "d")
+  command_keys("<Esc>", "b", "b", "e", "v", "[[", "E", "E", "E", "b")
   step(200, "")
-  type_keys(
-    ",",
-    " ",
-    "i",
-    "t",
-    " ",
-    "w",
-    "a",
-    "s",
-    " ",
-    "n",
-    "i",
-    "c",
-    "e",
-    " ",
-    "w",
-    "h",
-    "i",
-    "l",
-    "e",
-    " ",
-    "i",
-    "t",
-    " ",
-    "l",
-    "a",
-    "s",
-    "t",
-    "e",
-    "d",
-    "<Esc>"
-  )
-  step(50, "")
-  command_keys("I")
+  command_keys("c")
+  type_keys("h", "e", "l", "l", "o", "<Esc>")
   step(200, "")
-  type_keys("e", "<Esc>")
-  command_keys("A")
+  command_keys("A", "!", "<Esc>")
+  command_keys("Fr")
+  command_keys("rl")
   step(50, "")
-  type_keys("!", "<CR>")
-  step(submit_wait_ms, "<Esc>")
-  command_keys("a")
+  command_keys("?", "h", "e", "l", "l", "o", "<CR>")
+  step(50, "")
+  command_keys("ce")
+  type_keys("g", "o", "o", "d", "b", "y", "e")
+  step(200, "")
+  command_keys("<CR>")
   type_keys("c", "a", "t")
-  step(command_wait_ms, "<Up>")
-  step(100, "")
-  step(command_wait_ms, "<Down>")
-  step(100, "")
-  step(command_wait_ms, "<Esc>")
+  step(500, "<Up>")
+  step(500, "<Down>")
+  step(500, "<Esc>")
   command_keys("a")
   command_keys(" ", "R", "<Tab>", "<CR>")
   step(100, "")
   command_keys("<CR>")
+  step(500, "<Esc>")
+  command_keys("?")
+  command_keys(".", "/", "d", "o", "c")
+  step(200, "")
+  command_keys("<CR>", "n")
+  step(200, "")
+  command_keys("vi(")
+  step(200, "")
+  command_keys("y", "a")
+  step(200, "")
+  type_keys("c", "a", "t", " ")
+  step(200, "")
+  command_keys("<Esc>", "p")
+  step(500, "<CR>")
 end
 
 return M
