@@ -170,6 +170,19 @@ T["editable edit"]["bbce text change keeps editor draft"] = function()
   Helpers.wait_for_editable_command(child, buf, "echo googbye world")
 end
 
+T["editable edit"]["bbC changes to command end"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world")
+  Helpers.wait_for_read_command(child, buf, "echo hello world")
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("bbC")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("goodbye")
+  Helpers.wait_for_read_command(child, buf, "echo goodbye")
+end
+
 T["editable edit"]["bbved deletes visual selection from editor draft"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")

@@ -403,6 +403,11 @@ M.setup = function(config)
         store_operator_start_cursor(args.buf)
         return "c"
       end, { buffer = args.buf, expr = true })
+      vim.keymap.set("n", "C", function()
+        log.debug("editable.key.C", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
+        store_operator_start_cursor(args.buf)
+        return "C"
+      end, { buffer = args.buf, expr = true })
       vim.keymap.set("x", "c", function()
         log.debug(
           "editable.key.visual_c",
