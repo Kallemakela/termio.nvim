@@ -89,4 +89,38 @@ T["shell integration"]["test write command replaces zsh buffer directly"] = func
   Helpers.wait_for_read_command(child, buf, "echo replacement")
 end
 
+T["shell integration"]["test write command does not fall back after shell write error"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  child.lua(
+    [[
+      local api = require("termline")
+      local helpers = require("termline.util.helpers")
+      local original_write = api.write_command_shell
+      local original_send = helpers.send_keys
+      _G.termline_write_error = nil
+      api.write_command_shell = function()
+        error("boom")
+      end
+      helpers.send_keys = function()
+        error("fallback called")
+      end
+      local ok, err = pcall(api.write_command, "echo replacement", ...)
+      api.write_command_shell = original_write
+      helpers.send_keys = original_send
+      _G.termline_write_error = ok and nil or err
+    ]],
+    { buf }
+  )
+  MiniTest.expect.equality(child.lua_get("_G.termline_write_error:match('boom') ~= nil"), true)
+end
+
+T["shell integration"]["test shell write verifies long zsh buffer"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  local command = "echo " .. string.rep("lorem ipsum dolor sit amet ", 20)
+  child.lua([[require("termline").write_command_shell(...)]], { command, nil, buf })
+  Helpers.wait_for_read_command(child, buf, command)
+end
+
 return T

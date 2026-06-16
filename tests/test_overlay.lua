@@ -36,9 +36,14 @@ end
 local function open_overlay(command)
   local buf = Helpers.open_shell(child)
   local target_win = child.api.nvim_get_current_win()
-  child.lua([[require("termline").clear_command(...)]], { buf })
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  Helpers.wait_until(child, function()
+    return child.lua_get([[pcall(require("termline").read_command_shell, ...)]], { buf })
+  end)
   child.lua([[require("termline").write_command(...)]], { command, buf })
   Helpers.wait_for_read_command(child, buf, command)
+  child.cmd("stopinsert")
   child.lua([[require("termline.editors.overlay").open(...)]], {
     { target_buf = buf, target_win = target_win },
   })
@@ -185,6 +190,22 @@ T["overlay.open()"]["insert submit returns to terminal mode"] = function()
     return child.api.nvim_get_current_buf() == buf
   end)
   Helpers.wait_for_mode(child, "t")
+end
+
+T["overlay.open()"]["write uses shell buffer replacement"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo old")
+  Helpers.wait_for_read_command(child, buf, "echo old")
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("buftype", { buf = 0 }) == "prompt"
+  end)
+  child.lua([[require("termline.api").clear_command = function() error("used terminal clear") end]])
+  child.api.nvim_set_current_line("$ echo new")
+  child.api.nvim_input("<C-s>")
+  Helpers.wait_for_read_command(child, buf, "echo new")
 end
 
 T["overlay.open()"]["echo hello world esc bbdw cr outputs world"] = function()

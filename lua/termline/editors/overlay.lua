@@ -379,7 +379,10 @@ end
 
 local function open_editor(ctx)
   if api.should_read_command_shell(ctx.target_buf) then
-    api.clear_completion_suggestions(ctx.target_buf)
+    local ok, err = pcall(api.clear_completion_suggestions, ctx.target_buf)
+    if not ok then
+      log.debug("overlay clear completions skipped", { buf = ctx.target_buf, error = err })
+    end
   end
   local command = api.read_command(ctx.target_buf)
   local command_screenpos = api.command_screenpos(ctx.target_win, ctx.target_buf)

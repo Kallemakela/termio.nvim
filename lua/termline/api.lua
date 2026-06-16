@@ -1,7 +1,6 @@
 local M = {}
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
-local log = require("termline.util.log")
 
 ---@param buf integer
 ---@return integer
@@ -32,12 +31,6 @@ local function send_shell_control(buf, lines)
   vim.fn.writefile(lines, file, "b")
   signal_shell(buf, vim.uv.constants.SIGUSR2)
   return file
-end
-
----@param buf integer
----@return boolean
-local function can_write_active_zle(buf)
-  return vim.api.nvim_get_current_buf() == buf and vim.api.nvim_get_mode().mode:sub(1, 1) == "t"
 end
 
 M.buffers = {}
@@ -183,13 +176,7 @@ end
 function M.should_read_command_shell(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local state = helpers.ensure_buffer_state(M.buffers, target)
-  local name = vim.api.nvim_buf_get_name(target)
-  local should_query = name:match("zsh") ~= nil
-    and state.shell_integration_ready == true
-    and state.prompt_start_cursor ~= nil
-    and state.prompt_end_cursor ~= nil
-  return should_query
+  return true
 end
 
 ---Read the current command.
@@ -251,17 +238,14 @@ function M.write_command(command, buf)
     end
     shell_state.command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   end
-  if M.should_read_command_shell(target) and can_write_active_zle(target) then
+  if M.should_read_command_shell(target) then
     local should_submit = shell_state.command:sub(-1) == "\r"
     local shell_command = should_submit and shell_state.command:sub(1, -2) or shell_state.command
-    local ok, err = pcall(M.write_command_shell, shell_command, nil, target)
-    if ok then
-      if should_submit then
-        helpers.send_keys("<CR>", target)
-      end
-      return
+    M.write_command_shell(shell_command, nil, target)
+    if should_submit then
+      helpers.send_keys("<CR>", target)
     end
-    log.debug("write_command_shell fallback", { buf = target, error = err })
+    return
   end
   helpers.send_keys(shell_state.command, target)
 end
@@ -278,8 +262,8 @@ function M.write_command_shell(command, cursor, buf)
   end
   local cursor_text = cursor and tostring(cursor) or ""
   send_shell_control(target, { "write", cursor_text, command })
-  local applied = vim.wait(200, function()
-    local ok, current = pcall(M.read_command_visible, target)
+  local applied = vim.wait(500, function()
+    local ok, current = pcall(M.read_command_shell, target, 100)
     return ok and current == command
   end, 10)
   if not applied then

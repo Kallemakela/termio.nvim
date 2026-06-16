@@ -256,7 +256,10 @@ function M.open(ctx)
     error("termline: terminal buffer name does not match editor.terminal_name_pattern")
   end
   if api.should_read_command_shell(buf) then
-    api.clear_completion_suggestions(buf)
+    local ok, err = pcall(api.clear_completion_suggestions, buf)
+    if not ok then
+      log.debug("editable clear completions skipped", { buf = buf, error = err })
+    end
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   api.read_command(buf)

@@ -36,6 +36,28 @@ local function needs_cursor_sync(target, current)
   return target.cursor ~= nil and target.cursor ~= current.cursor
 end
 
+---@param command string
+---@return string, boolean
+local function split_submit_command(command)
+  local should_submit = command:sub(-1) == "\r"
+  return should_submit and command:sub(1, -2) or command, should_submit
+end
+
+---@param target table
+---@param buf integer
+---@return boolean
+local function write_shell_command(target, buf)
+  if not api.should_read_command_shell(buf) then
+    return false
+  end
+  local command, should_submit = split_submit_command(target.command)
+  api.write_command_shell(command, target.cursor, buf)
+  if should_submit then
+    helpers.send_keys("<CR>", buf)
+  end
+  return true
+end
+
 ---@param buf integer
 ---@param target table
 ---@param current? table
@@ -74,10 +96,13 @@ function M.sync(target, buf, current)
     return false
   end
   if current.command ~= target.command then
-    api.clear_command(buf, { skip_verify = has_current })
-    api.write_command(target.command, buf)
-    current.command = target.command
-    current.cursor = #target.command
+    if write_shell_command(target, buf) then
+      current.command = target.command
+      current.cursor = #target.command
+    else
+      api.clear_command(buf, { skip_verify = has_current })
+      api.write_command(target.command, buf)
+    end
   end
   if needs_cursor_sync(target, current) then
     log.debug(
