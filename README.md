@@ -5,7 +5,7 @@
 
 <img width="1600" height="808" alt="screen-recording" src="https://github.com/user-attachments/assets/8c9786fd-bf7c-48e0-818a-7b97a02f643a" />
 
-Edit the terminal buffer like any other neovim text buffer with minimal latency.
+Edit the terminal buffer like any other text buffer with minimal latency.
 
 Provides a read/write API + a bundled 'editor' for the terminal buffer.
 Set `editor = nil` to only load the API.
