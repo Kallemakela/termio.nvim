@@ -34,4 +34,14 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   )
 end
 
+T["write_command()"] = MiniTest.new_set()
+
+T["write_command()"]["empty command after cursor stays empty"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.lua([[require("termline").write_command("", ..., 1)]], { buf })
+  Helpers.wait_for_read_command(child, buf, "")
+end
+
 return T

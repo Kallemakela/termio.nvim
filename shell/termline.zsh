@@ -44,7 +44,8 @@ zle -N termline-write-buffer termline_shell_write_buffer
 termline_shell_control() {
   local file="${TMPDIR:-/tmp}/termline.nvim.$$.control"
   [[ -f "$file" ]] || return 1
-  local payload="$(< "$file")"
+  local payload
+  IFS= read -r -d '' payload < "$file" || true
   rm -f "$file"
   local action="${payload%%$'\n'*}"
   local body="${payload#*$'\n'}"

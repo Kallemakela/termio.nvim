@@ -269,6 +269,15 @@ T["editable edit"]["bbdwa enters insert at correct spot"] = function()
   Helpers.wait_for_read_command(child, buf, "echo w!orld")
 end
 
+T["editable edit"]["a on empty command inserts typed text instead of cursor"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("a >")
+  Helpers.wait_for_read_command(child, buf, " >")
+end
+
 T["editable edit"]["bbdwI enters insert at command start"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
