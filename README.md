@@ -3,16 +3,17 @@
 > [!NOTE]
 > WIP. Expect bugs.
 
-Read and write the current zsh state in Neovim.
+Edit the terminal buffer like any other neovim text buffer with minimal latency.
 
-This branch is now a minimal zsh api + editor.
-No overlay editor.
-No sync module.
-Only `read_command()` and `write_command()`.
-Old general chansend based implementation is on branch `old`.
-The reasoning for making it zsh only is that this gets rid of chansend, which causes jitter when editing commands. Zsh only implementation simply overwrites the zle state to sync.
+Provides a read/write API + a bundled 'editor' for the terminal buffer.
+Set `editor = nil` to only load the API.
 
-Maybe easy to add support for other shells as well?
+## Branches 
+
+Current branch only supports zsh.
+Old general (and much more hacky and complex) chansend based implementation is on branch `old`.
+The main reason for making this zsh only is that this allows to not send a lot of characters/bytes to the neovim terminal, which causes lag, visible jitter and race conditions in some cases. With the zsh only approach we can simply overwrite the zle state to sync our editable buffer to the shell.
+I suspect it is easy to add support for other shells as well with the current branch's minimal approach, but zsh is enough for me.
 
 ## Setup
 
