@@ -35,6 +35,12 @@ require("termio").setup({
     type = "editable",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
     open = "<Esc>",
+    is_disabled = function(buf)
+      -- Example, assuming you track if TUI active in terminal
+      -- See `./doc/tui-detection.md` for tracking alt-screen/TUI state.
+      -- return vim.b[buf].term_tui_active
+      return false
+    end,
     keys = {
       ["<CR>"] = { action = "submit", mode = { "n", "i" } },
       ["<C-u>"] = { action = "clear", mode = { "n", "i" } },

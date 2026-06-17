@@ -59,6 +59,32 @@ T["editable edit"]["open key leaves terminal mode"] = function()
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
 end
 
+T["editable edit"]["open key stays in terminal mode when disabled"] = function()
+  Helpers.setup_child(
+    child,
+    [[{ editor = { type = "editable", is_disabled = function(buf) return vim.b[buf].term_tui_active == true end } }]]
+  )
+  local buf = Helpers.open_shell(child)
+  child.lua([[vim.b[...].term_tui_active = true]], { buf })
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("<Esc>")
+  child.wait(100)
+  MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "t")
+end
+
+T["editable edit"]["open returns false when disabled"] = function()
+  Helpers.setup_child(
+    child,
+    [[{ editor = { type = "editable", is_disabled = function() return true end } }]]
+  )
+  local buf = Helpers.open_shell(child)
+  MiniTest.expect.equality(
+    child.lua_get([[require("termio.editors.editable").open({ target_buf = ... })]], { buf }),
+    false
+  )
+end
+
 T["editable edit"]["open stores current shell state"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")

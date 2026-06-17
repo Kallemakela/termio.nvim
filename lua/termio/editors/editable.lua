@@ -258,11 +258,16 @@ end
 
 ---Open the editable terminal editor for the target terminal.
 ---@param ctx? table
+---@return boolean opened
 function M.open(ctx)
   ctx = build_context(ctx)
   local buf, win = ctx.target_buf, ctx.target_win
   if not helpers.is_enabled_terminal(buf) then
     error("termio: terminal buffer name does not match editor.terminal_name_pattern")
+  end
+  if helpers.is_editor_disabled(buf) then
+    log.debug("editable.open.disabled", { buf = buf, win = win })
+    return false
   end
   local ok, err = pcall(api.clear_completion_suggestions, buf)
   if not ok then
@@ -276,13 +281,16 @@ function M.open(ctx)
     local cursor = vim.api.nvim_win_get_cursor(win)
     refresh_editable_state(buf, cursor)
   end)
+  return true
 end
 
 local function apply_keymaps(buf)
   local handlers = {
     open = function()
       log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
-      M.open({ target_buf = buf })
+      if M.open({ target_buf = buf }) == false then
+        helpers.send_keys(config.options.editor.open, buf)
+      end
     end,
     submit = function()
       local mode = vim.api.nvim_get_mode().mode

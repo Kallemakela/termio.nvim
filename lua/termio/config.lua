@@ -6,6 +6,9 @@ M.defaults = {
     type = "editable",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
     open = "<Esc>",
+    is_disabled = function()
+      return false
+    end,
     keys = {
       ["<CR>"] = { action = "submit", mode = { "n", "i" } },
       ["<C-u>"] = { action = "clear", mode = { "n", "i" } },

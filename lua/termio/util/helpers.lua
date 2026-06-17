@@ -74,6 +74,16 @@ function M.is_enabled_terminal(buf)
   return regex:match_str(name) ~= nil
 end
 
+---@param buf integer
+---@return boolean
+function M.is_editor_disabled(buf)
+  local is_disabled = config.options.editor.is_disabled
+  if type(is_disabled) ~= "function" then
+    error("termio: config.editor.is_disabled must be a function")
+  end
+  return is_disabled(buf) == true
+end
+
 ---@param buffers table<integer, table>
 ---@param buf integer
 ---@return table
