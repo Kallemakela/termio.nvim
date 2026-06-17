@@ -1,10 +1,11 @@
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
+local bash = require("termio.shell_integration.bash")
 local zsh = require("termio.shell_integration.zsh")
 
 local M = {}
 local buffers = {}
-local shells = { zsh }
+local shells = { bash, zsh }
 
 ---@param buffer_state table<integer, table>
 function M.use_buffers(buffer_state)

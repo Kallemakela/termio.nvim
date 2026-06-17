@@ -15,7 +15,10 @@
 ### add config option to make commands like D,C,$ ignore wrap-newlines and go to end of command
 
 ## Chores
+
 update docs to match current zsh only state
+document shell-specific completion behavior
 
 ## Investigate
+
 why is nvim_chan_send much faster with bash than zsh?

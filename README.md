@@ -11,8 +11,8 @@ Edit the terminal buffer like any other text buffer with minimal latency.
 
 Provides a read/write API + a bundled 'editor' for the terminal buffer.
 Set `editor = nil` to only load the API.
-Currently only supports zsh.
-I suspect it is easy to add support for other shells as well with the current branch's minimal approach, but zsh is enough for me.
+Currently supports zsh and bash.
+It is easy to add support for other shells as well if needed.
 
 ## Setup
 
@@ -25,6 +25,11 @@ fi
 
 > [!NOTE]
 > `termio.nvim` does not auto-load shell integration because it is complex and insecure.
+
+In bash startup, e.g. in `~/.bashrc`:
+```bash
+source /path/to/termio.nvim/shell/termio.bash
+```
 
 In neovim:
 ```lua
@@ -40,7 +45,8 @@ require("termio").setup({
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",
-    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],
+    open = "<Esc>",
     is_disabled = function(buf)
       -- Example, assuming you track if TUI active in terminal
       -- See `./doc/tui-detection.md` for tracking alt-screen/TUI state.

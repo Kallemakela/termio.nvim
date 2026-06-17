@@ -80,4 +80,14 @@ T["shell integration"]["test shell write verifies long zsh buffer"] = function()
   Helpers.wait_for_read_command(child, buf, command)
 end
 
+T["shell integration"]["test bash read and write command through readline"] = function()
+  local buf = Helpers.open_shell(child, "$ ", "bash")
+  child.cmd("startinsert")
+  child.api.nvim_input("echo old")
+  Helpers.wait_for_read_command(child, buf, "echo old")
+  local command = [[printf '\\'; echo bash;]]
+  child.lua([[require("termio").write_command(...)]], { command, buf })
+  Helpers.wait_for_read_command(child, buf, command)
+end
+
 return T

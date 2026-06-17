@@ -2,6 +2,7 @@
 local Helpers = {}
 local test_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h")
 local test_zdotdir = test_root .. "/zsh-test"
+local test_bash_env = test_root .. "/bash-test/env"
 
 -- Add extra expectations
 Helpers.expect = vim.deepcopy(MiniTest.expect)
@@ -279,18 +280,32 @@ Helpers.has_terminal_esc_mapping = function(child)
   return child.lua_get([[vim.fn.maparg("<Esc>", "t", false, true).buffer == 1]])
 end
 
-Helpers.open_shell = function(child, prompt)
+Helpers.open_shell = function(child, prompt, shell)
   prompt = prompt or "$ "
-  -- TODO: Add coverage for multiple shells instead of relying on one default harness shell.
-  child.cmd(
-    string.format(
-      [[terminal env ZDOTDIR=%q TERMIO_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
-      test_zdotdir,
-      test_root,
-      prompt,
-      prompt
+  shell = shell or vim.env.TERMIO_TEST_SHELL or "zsh"
+  if shell == "zsh" then
+    child.cmd(
+      string.format(
+        [[terminal env ZDOTDIR=%q TERMIO_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
+        test_zdotdir,
+        test_root,
+        prompt,
+        prompt
+      )
     )
-  )
+  elseif shell == "bash" then
+    child.cmd(
+      string.format(
+        [[terminal env BASH_ENV=%q TERMIO_REPO_ROOT=%q PS1=%q bash --rcfile %q -i]],
+        test_bash_env,
+        test_root,
+        prompt,
+        test_bash_env
+      )
+    )
+  else
+    error("unsupported test shell: " .. shell)
+  end
   local buf = child.api.nvim_get_current_buf()
   -- Terminal startup is async; wait for the prompt itself so the synthetic
   -- OSC133 marker lands at the prompt boundary instead of transient shell output.

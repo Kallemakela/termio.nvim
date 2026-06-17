@@ -4,7 +4,8 @@ M.defaults = {
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",
-    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],
+    open = "<Esc>",
     is_disabled = function()
       return false
     end,
