@@ -17,9 +17,14 @@ I suspect it is easy to add support for other shells as well with the current br
 ## Setup
 
 In zsh startup, e.g. in `~/.zshrc`:
-```bash
-source /path/to/termio.nvim/shell/termio.zsh
+```zsh
+if [ -n "$NVIM" ]; then
+  source "$HOME/code/nvim/termio.nvim/shell/termio.zsh"
+fi
 ```
+
+> [!NOTE]
+> `termio.nvim` does not auto-load shell integration because it is complex and insecure.
 
 In neovim:
 ```lua
