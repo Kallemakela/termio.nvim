@@ -281,6 +281,17 @@ T["editable edit"]["bbdw<C-s> syncs editor draft to shell state"] = function()
   Helpers.wait_for_read_command(child, buf, "echo world")
 end
 
+T["editable edit"]["bbdwwvep keeps edited draft"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world")
+  Helpers.wait_for_read_command(child, buf, "echo hello world")
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("bbdwwvep")
+  Helpers.wait_for_editable_command(child, buf, "echo hello")
+end
+
 T["editable edit"]["bbdwi keeps deleted command state"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")

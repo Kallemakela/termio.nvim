@@ -3,7 +3,10 @@ local api = require("termio.api")
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
 local M = {}
-local CHANGE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_change_operator"
+local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
+-- `g@` calls operatorfunc after the keymap returns, so keep the selected
+-- after-delete behavior in an upvalue until `apply_delete_operator()` runs.
+local pending_after_delete_operator
 
 local function build_context(ctx)
   ctx = ctx or {}
@@ -37,6 +40,33 @@ local function read_editor_state(buf, win)
   }
 end
 
+---Return the buffer cursor where the editable command text ends.
+---Terminal buffers may contain blank/padded cells after the prompt line. This
+---walks forward exactly `#read_command()` bytes from `prompt_cursor`, so the
+---editable zone ends at command text, not at the terminal buffer edge.
+---@param buf integer
+---@param prompt_cursor integer[] 0-based column cursor where command starts
+---@return integer[] cursor 1-based row, 0-based column
+local function get_command_end_location_in_buffer(buf, prompt_cursor)
+  local row, col = unpack(prompt_cursor)
+  local remaining = #M.read_command(buf)
+  while remaining > 0 and row <= vim.api.nvim_buf_line_count(buf) do
+    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+    local line_start = row == prompt_cursor[1] and col or 0
+    local line_remaining = math.max(#line - line_start, 0)
+    if remaining <= line_remaining then
+      return { row, line_start + remaining }
+    end
+    remaining = remaining - line_remaining
+    row = row + 1
+  end
+  return { row, col }
+end
+
+local function is_position_after(row, col, target)
+  return row > target[1] or (row == target[1] and col > target[2])
+end
+
 ---Return the editable command zone in the terminal buffer.
 ---@param buf? integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
@@ -48,9 +78,13 @@ function M.get_editable_zone(buf)
     return nil
   end
   local start_row, start_col = unpack(prompt_cursor)
-  local end_row = vim.api.nvim_buf_line_count(target)
-  local line = vim.api.nvim_buf_get_lines(target, end_row - 1, end_row, false)[1] or ""
-  return { start_row = start_row, start_col = start_col, end_row = end_row, end_col = #line }
+  local end_cursor = get_command_end_location_in_buffer(target, prompt_cursor)
+  return {
+    start_row = start_row,
+    start_col = start_col,
+    end_row = end_cursor[1],
+    end_col = end_cursor[2],
+  }
 end
 
 ---Check if the current cursor is inside the editable command zone.
@@ -80,6 +114,14 @@ local function refresh_editable_state(buf, cursor)
   if prompt_cursor and cursor[1] == prompt_cursor[1] and cursor[2] < prompt_cursor[2] then
     cursor[2] = prompt_cursor[2]
     vim.api.nvim_win_set_cursor(0, cursor)
+  end
+  local zone = M.get_editable_zone(buf)
+  if zone and is_position_after(cursor[1], cursor[2], { zone.end_row, zone.end_col }) then
+    cursor = M.buffers[buf].last_editable_cursor or { zone.end_row, zone.end_col }
+    vim.api.nvim_win_set_cursor(0, cursor)
+  end
+  if M.is_cursor_in_editable_zone(buf, cursor) then
+    M.buffers[buf].last_editable_cursor = vim.deepcopy(cursor)
   end
   vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
 end
@@ -151,17 +193,10 @@ local function mark_unsynced_edit(buf)
   M.buffers[buf].has_unsynced_edits = true
 end
 
----@param buf integer
----@param target? { command?: string, cursor?: integer }
-local function sync_change_and_enter_insert(buf, target)
-  M.write(buf, target)
-  vim.cmd.startinsert()
-end
-
-local function paste_register_into_editable_buffer(after)
+local function paste_register_into_editable_buffer(after, register)
   -- `normal! p` can take terminal-buffer paste paths. Keep paste as a plain
   -- buffer edit so the editable draft stays desynced from the shell state.
-  local text = vim.fn.getreg(vim.v.register)
+  local text = vim.fn.getreg(register or vim.v.register)
   local row, col = unpack(vim.api.nvim_win_get_cursor(0))
   if after then
     col = col + 1
@@ -172,10 +207,33 @@ local function paste_register_into_editable_buffer(after)
   vim.api.nvim_win_set_cursor(0, { row + #lines - 1, col + #lines[#lines] - 1 })
 end
 
+local function delete_visual_selection_then(action)
+  mark_unsynced_edit(vim.api.nvim_get_current_buf())
+  vim.cmd("normal! d")
+  if action then
+    action()
+  end
+end
+
+---Replace the visual selection with a register using editable-buffer writes.
+---The delete step changes `vim.v.register`, so preserve and pass the original
+---register explicitly to paste the user's intended text.
+---@param after boolean paste after cursor when true, before cursor when false
+local function paste_register_over_visual_selection(after)
+  local register = vim.v.register
+  local text = vim.fn.getreg(register):gsub("%s+$", "")
+  local register_type = vim.fn.getregtype(register)
+  delete_visual_selection_then(function()
+    vim.fn.setreg(register, text, register_type)
+    paste_register_into_editable_buffer(after, register)
+  end)
+end
+
+---Convert a buffer cursor to a command-text byte offset from the prompt end.
 ---@param buf integer
----@param cursor integer[]
----@return integer
-local function command_offset_from_cursor(buf, cursor)
+---@param cursor integer[] 1-based row, 0-based column
+---@return integer offset
+local function get_shell_cursor_offset(buf, cursor)
   local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
   local offset = 0
   for row = prompt_row, cursor[1] do
@@ -187,35 +245,76 @@ local function command_offset_from_cursor(buf, cursor)
   return offset
 end
 
+---Convert a command-text byte offset back to a terminal buffer cursor.
 ---@param buf integer
----@return integer
-local function operator_start_offset(buf)
-  local mark = vim.api.nvim_buf_get_mark(buf, "[")
-  return command_offset_from_cursor(buf, mark)
+---@param offset integer offset from prompt end
+---@return integer[] cursor 1-based row, 0-based column
+local function get_buffer_location_from_shell_offset(buf, offset)
+  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
+  local row = prompt_row
+  local col = prompt_col + offset
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  while row < line_count do
+    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+    if col <= #line then
+      return { row, col }
+    end
+    col = col - #line
+    row = row + 1
+  end
+  return { row, col }
 end
 
+---Return the command offset where the current operator motion started.
+---@param buf integer
+---@return integer offset
+local function command_offset_at_operator_start(buf)
+  local mark = vim.api.nvim_buf_get_mark(buf, "[")
+  return get_shell_cursor_offset(buf, mark)
+end
+
+---Delete the range Vim resolved for the pending `g@` operator motion.
 ---@param motion_type string
-local function delete_operator_range(motion_type)
+local function delete_operator_motion_range(motion_type)
   -- `g@` stores the resolved motion range in `[ and `]. Delete that range
   -- after Vim has handled the motion instead of reimplementing motions here.
   vim.cmd("normal! " .. (motion_type == "line" and "`[V`]d" or "`[v`]d"))
 end
 
----Delete the range captured by `g@` and continue editing in terminal insert mode.
+local function keep_cursor_at_command_offset(buf, offset)
+  vim.api.nvim_win_set_cursor(0, get_buffer_location_from_shell_offset(buf, offset))
+end
+
+---Sync the deleted draft to the shell and continue in terminal insert mode.
+---@param buf integer
+---@param offset integer command offset where insert mode should continue
+local function enter_insert_at_command_offset(buf, offset)
+  M.write(buf, { cursor = offset })
+  vim.cmd.startinsert()
+end
+
+---Delete the range captured by `g@` and run the pending after-delete callback.
 ---@param motion_type string
-function M.apply_change_operator(motion_type)
+function M.apply_delete_operator(motion_type)
   local buf = vim.api.nvim_get_current_buf()
-  local cursor = operator_start_offset(buf)
+  local offset = command_offset_at_operator_start(buf)
+  local after_delete = pending_after_delete_operator or keep_cursor_at_command_offset
+  pending_after_delete_operator = nil
   mark_unsynced_edit(buf)
-  delete_operator_range(motion_type)
-  sync_change_and_enter_insert(buf, { cursor = cursor })
+  delete_operator_motion_range(motion_type)
+  after_delete(buf, offset)
+end
+
+local function start_delete_operator(after_delete)
+  -- `g@` lets Vim collect the motion range before `apply_delete_operator()`
+  -- handles shared delete-side effects and the key-specific follow-up.
+  pending_after_delete_operator = after_delete
+  vim.go.operatorfunc = DELETE_OPERATOR_FUNC
+  return "g@"
 end
 
 local function start_change_operator()
-  -- `c` needs to wait for a motion. `g@` lets Vim collect that motion and call
-  -- `apply_change_operator()` with the resulting range.
-  vim.go.operatorfunc = CHANGE_OPERATOR_FUNC
-  return "g@"
+  return start_delete_operator(enter_insert_at_command_offset)
 end
 
 ---Handle terminal text changes with the concurrent-write guard.
@@ -387,8 +486,7 @@ M.setup = function(config)
       end, { buffer = args.buf })
       vim.keymap.set("n", "d", function()
         log.debug("editable.key.d", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        mark_unsynced_edit(args.buf)
-        return "d"
+        return start_delete_operator()
       end, { buffer = args.buf, expr = true })
       vim.keymap.set("n", "c", function()
         log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
@@ -410,6 +508,20 @@ M.setup = function(config)
         )
         return start_change_operator()
       end, { buffer = args.buf, expr = true })
+      vim.keymap.set("x", "p", function()
+        log.debug(
+          "editable.key.visual_p",
+          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
+        )
+        paste_register_over_visual_selection(true)
+      end, { buffer = args.buf })
+      vim.keymap.set("x", "P", function()
+        log.debug(
+          "editable.key.visual_P",
+          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
+        )
+        paste_register_over_visual_selection(false)
+      end, { buffer = args.buf })
       vim.api.nvim_create_autocmd("TextChanged", {
         buffer = args.buf,
         group = editgroup,
@@ -470,10 +582,10 @@ M.setup = function(config)
         callback = function(args)
           local cursor = vim.api.nvim_win_get_cursor(0)
           local bufinfo = M.buffers[args.buf]
-          vim.bo.modifiable = M.is_cursor_in_editable_zone(args.buf, cursor)
+          refresh_editable_state(args.buf, cursor)
           log.debug("editable.cursor_moved", {
             buf = args.buf,
-            cursor = cursor,
+            cursor = vim.api.nvim_win_get_cursor(0),
             prompt_cursor = bufinfo.promt_cursor,
             modifiable = vim.bo.modifiable,
           })
