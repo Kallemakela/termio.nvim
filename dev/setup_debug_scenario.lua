@@ -55,7 +55,7 @@ end
 
 function M.setup(opts)
   opts = opts or {}
-  _G.termline_debug = debug_tools
+  _G.termio_debug = debug_tools
   status.setup()
   vim.g.mapleader = " "
   vim.opt.clipboard = "unnamedplus"
@@ -70,7 +70,7 @@ end
 ---Send input through Neovim input to match user keystrokes.
 ---@param keys string
 function M.open_terminal()
-  local layout = vim.env.TERMLINE_LAYOUT or "single"
+  local layout = vim.env.TERMIO_LAYOUT or "single"
   if layout == "v" then
     vim.cmd.vsplit()
   elseif layout == "h" then
@@ -90,7 +90,7 @@ function M.open_terminal()
         vim.api.nvim_input(command)
       end
       vim.cmd.startinsert()
-      if vim.env.TERMLINE_DEMO == "1" then
+      if vim.env.TERMIO_DEMO == "1" then
         demo.start()
       end
     end, 500)
@@ -98,7 +98,7 @@ function M.open_terminal()
 end
 
 function M.finish()
-  local post_setup = vim.env.TERMLINE_POST_SETUP
+  local post_setup = vim.env.TERMIO_POST_SETUP
   if post_setup and post_setup ~= "" then
     vim.cmd(post_setup)
   end

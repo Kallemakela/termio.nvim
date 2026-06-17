@@ -43,7 +43,7 @@ local function open_window()
   vim.wo[state.win].signcolumn = "no"
   vim.wo[state.win].wrap = false
   vim.wo[state.win].winfixheight = true
-  vim.api.nvim_buf_set_name(state.buf, "termline://status")
+  vim.api.nvim_buf_set_name(state.buf, "termio://status")
   vim.api.nvim_set_current_win(current_win)
 end
 
@@ -52,8 +52,8 @@ function M.setup()
   open_window()
   vim.keymap.set("n", "<Leader>s", function()
     status.copy_and_dump()
-  end, { desc = "Copy termline status" })
-  local group = vim.api.nvim_create_augroup("termline-dev-status", { clear = true })
+  end, { desc = "Copy termio status" })
+  local group = vim.api.nvim_create_augroup("termio-dev-status", { clear = true })
   vim.api.nvim_create_autocmd({
     "CursorMoved",
     "CursorMovedI",

@@ -3,15 +3,15 @@ local M = {}
 local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 
 local function get_api()
-  return require("termline.api")
+  return require("termio.api")
 end
 
 local function get_config()
-  return require("termline.config")
+  return require("termio.config")
 end
 
 local function get_helpers()
-  return require("termline.util.helpers")
+  return require("termio.util.helpers")
 end
 
 local function inspect_text(value)
@@ -56,7 +56,7 @@ end
 local function find_editor_window()
   for _, win in ipairs(vim.api.nvim_list_wins()) do
     local buf = vim.api.nvim_win_get_buf(win)
-    if vim.bo[buf].filetype == "termline" then
+    if vim.bo[buf].filetype == "termio" then
       return win, buf
     end
   end
@@ -70,7 +70,7 @@ local function get_log_path()
 end
 
 function M.collect()
-  local terminal = _G.termline_debug and _G.termline_debug.terminal or {}
+  local terminal = _G.termio_debug and _G.termio_debug.terminal or {}
   local shell = { command = "missing terminal", cursor = { "-", "-" } }
   local target = { active = false, cursor = "-", command = "-" }
   local buffer = { cursor = "-", command = "missing terminal" }
@@ -153,14 +153,14 @@ end
 function M.copy_and_dump(label)
   local lines = M.dump(label)
   vim.fn.setreg("+", table.concat(lines, "\n"))
-  vim.notify("Copied termline status", vim.log.levels.INFO)
+  vim.notify("Copied termio status", vim.log.levels.INFO)
   return lines
 end
 
 function M.setup()
-  _G.termline_debug = _G.termline_debug or {}
-  _G.termline_debug.dump_status = M.dump
-  _G.termline_debug.copy_status = M.copy_and_dump
+  _G.termio_debug = _G.termio_debug or {}
+  _G.termio_debug.dump_status = M.dump
+  _G.termio_debug.copy_status = M.copy_and_dump
 end
 
 return M

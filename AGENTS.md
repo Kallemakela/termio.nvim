@@ -30,7 +30,7 @@ always start with reading `README.md`
 
 ### Interactive
 - Use the dev harness to run arbitrary workflows with the correct setup:
-`sh ./dev/run.sh --headless --debug --post-setup 'lua require("termline.util.log").debug("debug", "hello world")' --words 3`
+`sh ./dev/run.sh --headless --debug --post-setup 'lua require("termio.util.log").debug("debug", "hello world")' --words 3`
     - `--headless` switches startup mode.
     - `--debug` enables plugin debug output through `verbosefile` in `./tmp/dev.out`.
     - `--post-setup` runs an Ex command string after setup and before quit, like `nvim --headless -c`.

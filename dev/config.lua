@@ -4,7 +4,7 @@ local debug_options = dofile(root .. "/dev/debug_options.lua")
 local M = {}
 
 local function setup_verbosefile()
-  if vim.env.TERMLINE_DEBUG ~= "1" then
+  if vim.env.TERMIO_DEBUG ~= "1" then
     return
   end
   vim.fn.mkdir(root .. "/tmp", "p")
@@ -19,7 +19,7 @@ function M.setup(opts)
   if opts.before_setup then
     opts.before_setup()
   end
-  require("termline").setup(debug_options.build())
+  require("termio").setup(debug_options.build())
 end
 
 return M

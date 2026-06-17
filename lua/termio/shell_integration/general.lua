@@ -1,5 +1,5 @@
-local helpers = require("termline.util.helpers")
-local log = require("termline.util.log")
+local helpers = require("termio.util.helpers")
+local log = require("termio.util.log")
 
 local M = {}
 local buffers = {}
@@ -22,13 +22,13 @@ local function send_fifo_frame(buf, action, payload)
   local state = helpers.ensure_buffer_state(buffers, buf)
   local fifo = state.shell_fifo_path
   if not fifo then
-    error("termline: missing shell integration FIFO")
+    error("termio: missing shell integration FIFO")
   end
   local stat = vim.uv.fs_stat(fifo)
   if not stat or stat.type ~= "fifo" then
     log.debug("shell fifo unavailable", { buf = buf, fifo = fifo })
     state.shell_fifo_path = nil
-    error("termline: shell integration FIFO unavailable")
+    error("termio: shell integration FIFO unavailable")
   end
   local fd = assert(vim.uv.fs_open(fifo, "w", 384))
   local ok, err = vim.uv.fs_write(fd, action .. "\t" .. (payload or "") .. "\n", -1)
@@ -123,7 +123,7 @@ function M.read_command(buf, timeout_ms)
     return state.shell_query_pending == false
   end, 5)
   if not received then
-    error("termline: shell command query timed out")
+    error("termio: shell command query timed out")
   end
   -- FIFO query replies can arrive before Neovim has processed zle redraw bytes
   -- from the terminal PTY. Let the channel drain before callers read screen text.
@@ -150,7 +150,7 @@ function M.write_command(buf, command, cursor)
     return state.shell_write_pending == false
   end, 5)
   if not applied then
-    error("termline: shell command write timed out")
+    error("termio: shell command write timed out")
   end
   state.shell_state.command = command
   state.shell_state.cursor = cursor

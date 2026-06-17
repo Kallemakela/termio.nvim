@@ -1,5 +1,5 @@
 local M = {}
-local ns = vim.api.nvim_create_namespace("termline-editable-zone-debug")
+local ns = vim.api.nvim_create_namespace("termio-editable-zone-debug")
 
 ---@param buf? integer
 ---@return integer
@@ -10,7 +10,7 @@ end
 ---@param buf integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
 function M.get(buf)
-  local editable = require("termline.editors.editable")
+  local editable = require("termio.editors.editable")
   local target_buf = current_buf(buf)
   local bufinfo = editable.buffers and editable.buffers[target_buf]
   local prompt_cursor = bufinfo and bufinfo.promt_cursor or nil
@@ -34,7 +34,7 @@ function M.highlight(buf)
   M.clear(target_buf)
   local zone = M.get(target_buf)
   if not zone then
-    vim.notify("termline: no editable zone detected", vim.log.levels.INFO)
+    vim.notify("termio: no editable zone detected", vim.log.levels.INFO)
     return
   end
   vim.api.nvim_buf_set_extmark(target_buf, ns, zone.start_row - 1, zone.start_col, {
@@ -48,7 +48,7 @@ end
 function M.show(buf)
   local zone = M.get(buf)
   if not zone then
-    vim.notify("termline: no editable zone detected", vim.log.levels.INFO)
+    vim.notify("termio: no editable zone detected", vim.log.levels.INFO)
     return
   end
   M.highlight(buf)

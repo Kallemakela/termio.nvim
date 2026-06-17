@@ -18,7 +18,7 @@ T["shell integration"]["test read command ignores stale completion rows"] = func
   child.cmd("startinsert")
   child.api.nvim_input("ls <Tab>foo")
   Helpers.wait_until(child, function()
-    return child.lua_get([[require("termline").read_command(...)]], { buf }) == "ls foo"
+    return child.lua_get([[require("termio").read_command(...)]], { buf }) == "ls foo"
   end)
 end
 
@@ -27,15 +27,15 @@ T["shell integration"]["test write command replaces zsh buffer directly"] = func
   child.cmd("startinsert")
   child.api.nvim_input("echo old")
   Helpers.wait_for_read_command(child, buf, "echo old")
-  child.lua([[require("termline").write_command("echo replacement", ...)]], { buf })
+  child.lua([[require("termio").write_command("echo replacement", ...)]], { buf })
   Helpers.wait_for_read_command(child, buf, "echo replacement")
 end
 
 T["shell integration"]["test shell integration announces fifo path"] = function()
   local buf = Helpers.open_shell(child)
   Helpers.wait_until(child, function()
-    local path = child.lua_get([[require("termline.api").buffers[...].shell_fifo_path]], { buf })
-    return type(path) == "string" and path:match("termline%.nvim%.%d+%.fifo$") ~= nil
+    local path = child.lua_get([[require("termio.api").buffers[...].shell_fifo_path]], { buf })
+    return type(path) == "string" and path:match("termio%.nvim%.%d+%.fifo$") ~= nil
   end)
 end
 
@@ -43,9 +43,9 @@ T["shell integration"]["test fifo frame writes zsh buffer"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_until(child, function()
-    return child.lua_get([[require("termline.api").buffers[...].shell_fifo_path ~= nil]], { buf })
+    return child.lua_get([[require("termio.api").buffers[...].shell_fifo_path ~= nil]], { buf })
   end)
-  child.lua([[require("termline").write_command("echo fifo", ...)]], { buf })
+  child.lua([[require("termio").write_command("echo fifo", ...)]], { buf })
   Helpers.wait_for_read_command(child, buf, "echo fifo")
 end
 
@@ -53,30 +53,30 @@ T["shell integration"]["test fifo write surfaces write error"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_until(child, function()
-    return child.lua_get([[require("termline.api").buffers[...].shell_fifo_path ~= nil]], { buf })
+    return child.lua_get([[require("termio.api").buffers[...].shell_fifo_path ~= nil]], { buf })
   end)
   child.lua(
     [[
-      local api = require("termline")
+      local api = require("termio")
       local original_write = vim.uv.fs_write
-      _G.termline_write_error = nil
+      _G.termio_write_error = nil
       vim.uv.fs_write = function()
         error("boom")
       end
       local ok, err = pcall(api.write_command, "echo replacement", ...)
       vim.uv.fs_write = original_write
-      _G.termline_write_error = ok and nil or err
+      _G.termio_write_error = ok and nil or err
     ]],
     { buf }
   )
-  MiniTest.expect.equality(child.lua_get("_G.termline_write_error:match('boom') ~= nil"), true)
+  MiniTest.expect.equality(child.lua_get("_G.termio_write_error:match('boom') ~= nil"), true)
 end
 
 T["shell integration"]["test shell write verifies long zsh buffer"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   local command = "echo " .. string.rep("lorem ipsum dolor sit amet ", 20)
-  child.lua([[require("termline").write_command(...)]], { command, buf })
+  child.lua([[require("termio").write_command(...)]], { command, buf })
   Helpers.wait_for_read_command(child, buf, command)
 end
 

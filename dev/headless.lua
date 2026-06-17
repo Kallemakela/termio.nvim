@@ -9,9 +9,9 @@ scenario.setup({
 })
 
 scenario.open_terminal()
-if vim.env.TERMLINE_DEMO == "1" then
+if vim.env.TERMIO_DEMO == "1" then
   scenario.defer_finish(10000)
-elseif vim.env.TERMLINE_AUTO == "1" then
+elseif vim.env.TERMIO_AUTO == "1" then
   scenario.defer_finish(600)
 else
   scenario.finish()

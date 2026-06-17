@@ -1,7 +1,7 @@
-local api = require("termline.api")
-local config = require("termline.config")
-local commands = require("termline.commands")
-local shell_integration = require("termline.shell_integration.general")
+local api = require("termio.api")
+local config = require("termio.config")
+local commands = require("termio.commands")
+local shell_integration = require("termio.shell_integration.general")
 
 local M = {
   read_command = api.read_command,
@@ -13,19 +13,19 @@ local function load_editor()
   if editor == nil then
     return nil
   elseif editor == "editable" then
-    return require("termline.editors.editable")
+    return require("termio.editors.editable")
   end
-  error("termline: config.editor.type must be nil or 'editable'")
+  error("termio: config.editor.type must be nil or 'editable'")
 end
 
 local function create_autocmds()
   vim.api.nvim_create_autocmd("TermRequest", {
-    group = vim.api.nvim_create_augroup("termline-osc133", { clear = true }),
+    group = vim.api.nvim_create_augroup("termio-osc133", { clear = true }),
     callback = shell_integration.handle_term_request,
   })
 end
 
----Initialize termline from the plugin entrypoint.
+---Initialize termio from the plugin entrypoint.
 ---@param opts? table
 function M.setup(opts)
   config.setup(opts)

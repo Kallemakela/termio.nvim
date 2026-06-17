@@ -80,11 +80,11 @@ end
 
 function M.setup()
   vim.api.nvim_create_autocmd({ "BufDelete", "TermClose" }, {
-    group = vim.api.nvim_create_augroup("termline-debug-dump-cleanup", { clear = true }),
+    group = vim.api.nvim_create_augroup("termio-debug-dump-cleanup", { clear = true }),
     callback = clear_events,
   })
   vim.api.nvim_create_autocmd("TermRequest", {
-    group = vim.api.nvim_create_augroup("termline-debug-dump", { clear = true }),
+    group = vim.api.nvim_create_augroup("termio-debug-dump", { clear = true }),
     callback = remember_event,
   })
 end

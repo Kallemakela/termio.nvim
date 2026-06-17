@@ -1,7 +1,7 @@
 local M = { buffers = {} }
-local config = require("termline.config")
-local helpers = require("termline.util.helpers")
-local shell_integration = require("termline.shell_integration.general")
+local config = require("termio.config")
+local helpers = require("termio.util.helpers")
+local shell_integration = require("termio.shell_integration.general")
 
 shell_integration.use_buffers(M.buffers)
 
@@ -10,10 +10,10 @@ shell_integration.use_buffers(M.buffers)
 local function assert_prompt_range(buf)
   local state = helpers.ensure_buffer_state(M.buffers, buf)
   if not state.prompt_start_cursor then
-    error("termline: missing OSC133 prompt start cursor")
+    error("termio: missing OSC133 prompt start cursor")
   end
   if not state.prompt_end_cursor then
-    error("termline: missing OSC133 prompt end cursor")
+    error("termio: missing OSC133 prompt end cursor")
   end
   return state.prompt_start_cursor, state.prompt_end_cursor
 end
@@ -44,7 +44,7 @@ function M.write_command(command, buf, cursor)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
   if type(command) ~= "string" then
-    error("termline: command must be a string")
+    error("termio: command must be a string")
   end
   local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command

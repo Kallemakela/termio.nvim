@@ -1,5 +1,5 @@
 local M = {}
-local config = require("termline.config")
+local config = require("termio.config")
 
 ---@param keys string
 ---@return string
@@ -12,7 +12,7 @@ end
 local function assert_terminal_channel(buf)
   local chan = vim.bo[buf].channel
   if not chan or chan == 0 then
-    error("termline: missing terminal channel")
+    error("termio: missing terminal channel")
   end
   return chan
 end
@@ -69,7 +69,7 @@ function M.is_enabled_terminal(buf)
   local name = vim.api.nvim_buf_get_name(buf)
   local ok, regex = pcall(vim.regex, pattern)
   if not ok then
-    error("termline: invalid editor.terminal_name_pattern: " .. tostring(pattern))
+    error("termio: invalid editor.terminal_name_pattern: " .. tostring(pattern))
   end
   return regex:match_str(name) ~= nil
 end
@@ -91,7 +91,7 @@ end
 ---@param buf integer
 function M.assert_terminal(buf)
   if vim.bo[buf].buftype ~= "terminal" then
-    error("termline: current buffer is not a terminal")
+    error("termio: current buffer is not a terminal")
   end
 end
 

@@ -44,11 +44,11 @@ end
 
 local function get_command_cursor(buf)
   local win = child.api.nvim_get_current_win()
-  return child.lua_get([=[require("termline").command_cursor(...)[2]]=], { win, buf })
+  return child.lua_get([=[require("termio").command_cursor(...)[2]]=], { win, buf })
 end
 
 local function read_editable_command(buf)
-  return child.lua_get([[require("termline.editors.editable").read_command(...)]], { buf })
+  return child.lua_get([[require("termio.editors.editable").read_command(...)]], { buf })
 end
 
 T["editable edit"]["open key leaves terminal mode"] = function()
@@ -65,13 +65,13 @@ T["editable edit"]["open stores current shell state"] = function()
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello world")
   Helpers.wait_for_read_command(child, buf, "echo hello world")
-  child.lua([[require("termline.editors.editable").open({ target_buf = ... })]], { buf })
+  child.lua([[require("termio.editors.editable").open({ target_buf = ... })]], { buf })
   MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
+    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
     "echo hello world"
   )
   MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.cursor]], { buf }),
+    child.lua_get([[require("termio.api").buffers[...] .shell_state.cursor]], { buf }),
     16
   )
 end
@@ -238,7 +238,7 @@ T["editable edit"]["bbdw updates editor draft and stays in normal mode"] = funct
   child.api.nvim_input("bbdw")
   MiniTest.expect.equality(read_editable_command(buf), "echo world")
   MiniTest.expect.equality(
-    child.lua_get([[require("termline").read_command(...)]], { buf }),
+    child.lua_get([[require("termio").read_command(...)]], { buf }),
     "echo hello world"
   )
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
@@ -349,14 +349,14 @@ T["editable edit"]["bxxx defers shell sync until insert"] = function()
   child.api.nvim_input("bxxx")
   MiniTest.expect.equality(read_editable_command(buf), "echo hello ld")
   MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
+    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
     "echo hello world"
   )
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   Helpers.wait_for_read_command(child, buf, "echo hello ld")
   MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
+    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
     "echo hello ld"
   )
 end
@@ -389,13 +389,10 @@ T["editable edit"]["dj on wrapped command does not sync shell state"] = function
   Helpers.wait_for_read_command(child, buf, command)
   enter_editable_normal_mode(buf)
   child.api.nvim_input("dj")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termline").read_command(...)]], { buf }),
-    command
-  )
+  MiniTest.expect.equality(child.lua_get([[require("termio").read_command(...)]], { buf }), command)
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
   MiniTest.expect.equality(
-    child.lua_get([[require("termline.api").buffers[...] .shell_state.command]], { buf }),
+    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
     command
   )
 end

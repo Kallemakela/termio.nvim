@@ -1,9 +1,9 @@
-local config = require("termline.config")
-local api = require("termline.api")
-local helpers = require("termline.util.helpers")
-local log = require("termline.util.log")
+local config = require("termio.config")
+local api = require("termio.api")
+local helpers = require("termio.util.helpers")
+local log = require("termio.util.log")
 local M = {}
-local CHANGE_OPERATOR_FUNC = "v:lua.require'termline.editors.editable'.apply_change_operator"
+local CHANGE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_change_operator"
 
 local function build_context(ctx)
   ctx = ctx or {}
@@ -262,7 +262,7 @@ function M.open(ctx)
   ctx = build_context(ctx)
   local buf, win = ctx.target_buf, ctx.target_win
   if not helpers.is_enabled_terminal(buf) then
-    error("termline: terminal buffer name does not match editor.terminal_name_pattern")
+    error("termio: terminal buffer name does not match editor.terminal_name_pattern")
   end
   local ok, err = pcall(api.clear_completion_suggestions, buf)
   if not ok then

@@ -18,8 +18,8 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   local buf = Helpers.open_shell(child, prompt)
   child.lua(
     [[local buf, prompt = ...
-    local api = require("termline.api")
-    local state = require("termline.util.helpers").ensure_buffer_state(api.buffers, buf)
+    local api = require("termio.api")
+    local state = require("termio.util.helpers").ensure_buffer_state(api.buffers, buf)
     state.prompt_start_cursor = { 1, 0 }
     state.prompt_end_cursor = { 1, #prompt }]],
     { buf, prompt }
@@ -29,7 +29,7 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello")
 
   MiniTest.expect.equality(
-    child.lua_get([[require("termline").read_command(...)]], { buf }),
+    child.lua_get([[require("termio").read_command(...)]], { buf }),
     "echo hello"
   )
 end
@@ -40,7 +40,7 @@ T["write_command()"]["empty command after cursor stays empty"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
-  child.lua([[require("termline").write_command("", ..., 1)]], { buf })
+  child.lua([[require("termio").write_command("", ..., 1)]], { buf })
   Helpers.wait_for_read_command(child, buf, "")
 end
 

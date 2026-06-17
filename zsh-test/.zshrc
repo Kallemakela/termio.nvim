@@ -1,1 +1,1 @@
-source "$TERMLINE_REPO_ROOT/shell/termline.zsh"
+source "$TERMIO_REPO_ROOT/shell/termio.zsh"

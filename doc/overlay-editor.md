@@ -9,4 +9,4 @@ Some hacks required to make focus transitions between overlay window and the
 target terminal window seamless.
 - Like if user tries to open a buffer in the editor window, the window is
 closed and buffer is opened in the target window
-./../lua/termline/editors/fixbuf.lua
+./../lua/termio/editors/fixbuf.lua

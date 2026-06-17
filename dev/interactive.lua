@@ -12,15 +12,15 @@ local long_lorem = table.concat({
 }, " ")
 
 local function write_long_lorem_with_zle()
-  local termline = require("termline")
+  local termio = require("termio")
   local buf = scenario.terminal_buf
   local ready = vim.wait(1000, function()
-    return pcall(termline.read_command, buf)
+    return pcall(termio.read_command, buf)
   end, 20)
   if not ready then
-    error("termline dev: zsh integration is not ready")
+    error("termio dev: zsh integration is not ready")
   end
-  termline.write_command(long_lorem, buf)
+  termio.write_command(long_lorem, buf)
 end
 
 scenario.setup({
@@ -40,8 +40,8 @@ scenario.setup({
     })
   end,
   keymaps = {
-    { "n", "<leader>g", "<Cmd>TermReadCommand<CR>" },
-    { "n", "<leader>s", "<Cmd>TermWriteCommand<CR>" },
+    { "n", "<leader>g", "<Cmd>TermioReadCommand<CR>" },
+    { "n", "<leader>s", "<Cmd>TermioWriteCommand<CR>" },
     {
       "n",
       "<leader>w",

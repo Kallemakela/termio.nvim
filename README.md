@@ -1,4 +1,4 @@
-# termline.nvim
+# termio.nvim
 
 > [!NOTE]
 > WIP. Expect bugs.
@@ -21,20 +21,20 @@ I suspect it is easy to add support for other shells as well with the current br
 
 In zsh startup, e.g. in `~/.zshrc`:
 ```bash
-source /path/to/termline.nvim/shell/termline.zsh
+source /path/to/termio.nvim/shell/termio.zsh
 ```
 
 In neovim:
 ```lua
-require("termline").setup()
+require("termio").setup()
 ```
 
 ## Config
 
-Defaults live in `lua/termline/config.lua`.
+Defaults live in `lua/termio/config.lua`.
 
 ```lua
-require("termline").setup({
+require("termio").setup({
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",
@@ -57,10 +57,10 @@ Set `editor.type = nil` for API-only mode.
 ## API
 
 ```lua
-local termline = require("termline")
+local termio = require("termio")
 local buf = vim.api.nvim_get_current_buf()
-local command = termline.read_command(buf)
-termline.write_command("echo hello", buf)
+local command = termio.read_command(buf)
+termio.write_command("echo hello", buf)
 ```
 
 ## User Commands
@@ -68,8 +68,8 @@ termline.write_command("echo hello", buf)
 User commands target the current terminal buffer.
 
 ```vim
-:TermReadCommand
-:TermWriteCommand echo hello
+:TermioReadCommand
+:TermioWriteCommand echo hello
 ```
 
 ## Terms
@@ -81,7 +81,7 @@ User commands target the current terminal buffer.
 
 ## Completions
 
-Bundled editors set `vim.bo.filetype = "termline"`.
+Bundled editors set `vim.bo.filetype = "termio"`.
 Use that filetype to set custom completions for the editor buffer.
 
 Blink example:
@@ -90,7 +90,7 @@ Blink example:
 require("blink.cmp").setup({
   sources = {
     per_filetype = {
-      ["termline"] = { "path", "snippets" },
+      ["termio"] = { "path", "snippets" },
     },
   },
 })

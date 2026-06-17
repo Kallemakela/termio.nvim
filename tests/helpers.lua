@@ -193,7 +193,7 @@ end
 
 Helpers.setup_child = function(child, setup)
   child.setup()
-  child.lua(string.format("require('termline').setup(%s)", setup or "{ editor = { type = nil } }"))
+  child.lua(string.format("require('termio').setup(%s)", setup or "{ editor = { type = nil } }"))
 end
 
 Helpers.wait_until = function(child, check, timeout)
@@ -217,7 +217,7 @@ Helpers.wait_for_read_command = function(child, buf, expected, timeout)
   local got
   local ok, err = pcall(function()
     Helpers.wait_until(child, function()
-      got = child.lua_get([[require("termline").read_command(...)]], { buf })
+      got = child.lua_get([[require("termio").read_command(...)]], { buf })
       return got == expected
     end, timeout)
   end)
@@ -233,7 +233,7 @@ Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
   local ok = pcall(function()
     Helpers.wait_until(child, function()
       local did_read, result = pcall(function()
-        return child.lua_get([[require("termline.editors.editable").read_command(...)]], { buf })
+        return child.lua_get([[require("termio.editors.editable").read_command(...)]], { buf })
       end)
       if not did_read then
         read_error = result
@@ -284,7 +284,7 @@ Helpers.open_shell = function(child, prompt)
   -- TODO: Add coverage for multiple shells instead of relying on one default harness shell.
   child.cmd(
     string.format(
-      [[terminal env ZDOTDIR=%q TERMLINE_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
+      [[terminal env ZDOTDIR=%q TERMIO_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
       test_zdotdir,
       test_root,
       prompt,
