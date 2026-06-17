@@ -2,8 +2,13 @@ local api = require("termio.api")
 local config = require("termio.config")
 local commands = require("termio.commands")
 local shell_integration = require("termio.shell_integration.general")
+local state = require("termio.state")
 
 local M = {
+  disable = state.disable,
+  enable = state.enable,
+  toggle = state.toggle,
+  is_enabled = state.is_enabled,
   read_command = api.read_command,
   write_command = api.write_command,
 }
@@ -29,6 +34,7 @@ end
 ---@param opts? table
 function M.setup(opts)
   config.setup(opts)
+  state.enable()
   commands.setup()
   local editor = load_editor()
   if editor then

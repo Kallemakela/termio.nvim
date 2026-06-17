@@ -1,5 +1,6 @@
 local M = {}
 local config = require("termio.config")
+local state = require("termio.state")
 
 ---@param keys string
 ---@return string
@@ -77,6 +78,9 @@ end
 ---@param buf integer
 ---@return boolean
 function M.is_editor_disabled(buf)
+  if not state.is_enabled() then
+    return true
+  end
   local is_disabled = config.options.editor.is_disabled
   if type(is_disabled) ~= "function" then
     error("termio: config.editor.is_disabled must be a function")

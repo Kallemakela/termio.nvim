@@ -85,6 +85,15 @@ T["editable edit"]["open returns false when disabled"] = function()
   )
 end
 
+T["editable edit"]["disable stops editor open"] = function()
+  local buf = Helpers.open_shell(child)
+  child.lua([[require("termio").disable()]])
+  MiniTest.expect.equality(
+    child.lua_get([[require("termio.editors.editable").open({ target_buf = ... })]], { buf }),
+    false
+  )
+end
+
 T["editable edit"]["open stores current shell state"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
