@@ -110,16 +110,18 @@ end
 ---Check if cursor is outside the editable zone and move it back if needed.
 ---@param buf integer
 ---@param cursor integer[]
-local function refresh_editable_state(buf, cursor)
+---@param win? integer
+local function refresh_editable_state(buf, cursor, win)
+  win = win or 0
   local prompt_cursor = M.buffers[buf].promt_cursor
   if prompt_cursor and cursor[1] == prompt_cursor[1] and cursor[2] < prompt_cursor[2] then
     cursor[2] = prompt_cursor[2]
-    vim.api.nvim_win_set_cursor(0, cursor)
+    vim.api.nvim_win_set_cursor(win, cursor)
   end
   local zone = M.get_editable_zone(buf)
   if zone and is_position_after(cursor[1], cursor[2], { zone.end_row, zone.end_col }) then
     cursor = M.buffers[buf].last_editable_cursor or { zone.end_row, zone.end_col }
-    vim.api.nvim_win_set_cursor(0, cursor)
+    vim.api.nvim_win_set_cursor(win, cursor)
   end
   if M.is_cursor_in_editable_zone(buf, cursor) then
     M.buffers[buf].last_editable_cursor = vim.deepcopy(cursor)
@@ -375,11 +377,23 @@ function M.open(ctx)
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   api.read_command(buf)
-  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
+  local shell_state = vim.deepcopy(buffer_state.shell_state)
+  log.debug("editable.open", { buf = buf, win = win, shell_state = shell_state })
   vim.cmd("stopinsert")
   vim.schedule(function()
-    local cursor = vim.api.nvim_win_get_cursor(win)
-    refresh_editable_state(buf, cursor)
+    local rendered = vim.wait(500, function()
+      return M.read_command(buf) == shell_state.command
+    end, 5)
+    if not rendered then
+      error("termio: terminal command render timed out")
+    end
+    -- Normal mode cannot place the cursor after the final command cell.
+    local max_cursor = math.max(#shell_state.command - 1, 0)
+    local cursor_offset =
+      math.max(math.min(shell_state.cursor or #shell_state.command, max_cursor), 0)
+    local cursor = get_buffer_location_from_shell_offset(buf, cursor_offset)
+    vim.api.nvim_win_set_cursor(win, cursor)
+    refresh_editable_state(buf, cursor, win)
   end)
   return true
 end

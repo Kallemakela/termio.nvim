@@ -120,6 +120,31 @@ T["editable edit"]["open keeps bash cursor at command end"] = function()
   MiniTest.expect.equality(get_command_cursor(buf), 15)
 end
 
+T["editable edit"]["open keeps bash cursor on wrapped command end"] = function()
+  local buf = Helpers.open_shell(child, "$ ", "bash")
+  local command = "echo " .. string.rep("lorem ipsum ", 16)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_for_mode(child, "nt")
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("modifiable", { buf = buf })
+  end)
+  MiniTest.expect.equality(get_command_cursor(buf), #command - 1)
+  MiniTest.expect.equality(child.api.nvim_win_get_cursor(0)[1] > 1, true)
+end
+
+T["editable edit"]["open keeps bash cursor inside command"] = function()
+  local buf = Helpers.open_shell(child, "$ ", "bash")
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world<Left><Left><Left><Esc>")
+  Helpers.wait_for_mode(child, "nt")
+  MiniTest.expect.equality(get_command_cursor(buf), 13)
+end
+
 T["editable edit"]["open clears zsh tab suggestions"] = function()
   local buf = Helpers.open_shell(child, "$ ", "zsh")
   child.cmd("startinsert")

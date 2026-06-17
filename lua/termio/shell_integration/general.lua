@@ -141,6 +141,7 @@ function M.read_command(buf, timeout_ms)
   if not received then
     error("termio: shell command query timed out")
   end
+  -- TODO: remove this manual wait and wait for terminal render/query consistency.
   -- FIFO query replies can arrive before Neovim has processed shell redraw bytes
   -- from the terminal PTY. Let the channel drain before callers read screen text.
   vim.wait(20, function()
