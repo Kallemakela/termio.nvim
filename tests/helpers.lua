@@ -234,7 +234,10 @@ Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
   local ok = pcall(function()
     Helpers.wait_until(child, function()
       local did_read, result = pcall(function()
-        return child.lua_get([[require("termio.editors.editable").read_command(...)]], { buf })
+        return child.lua_get(
+          [[require("termio.editors.editable").read_command_from_buffer(...)]],
+          { buf }
+        )
       end)
       if not did_read then
         read_error = result

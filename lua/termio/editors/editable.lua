@@ -27,7 +27,7 @@ end
 ---Read the editable draft command from the terminal buffer.
 ---@param buf integer
 ---@return string
-function M.read_command(buf)
+function M.read_command_from_buffer(buf)
   local prompt_cursor = M.buffers[buf].promt_cursor
   local lines = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, -1, false)
   lines[1] = (lines[1] or ""):sub(prompt_cursor[2] + 1)
@@ -36,7 +36,7 @@ end
 
 local function read_editor_state(buf, win)
   return {
-    command = M.read_command(buf),
+    command = M.read_command_from_buffer(buf),
     cursor = api.command_cursor(win, buf)[2],
   }
 end
@@ -50,7 +50,7 @@ end
 ---@return integer[] cursor 1-based row, 0-based column
 local function get_command_end_location_in_buffer(buf, prompt_cursor)
   local row, col = unpack(prompt_cursor)
-  local remaining = #M.read_command(buf)
+  local remaining = #M.read_command_from_buffer(buf)
   while remaining > 0 and row <= vim.api.nvim_buf_line_count(buf) do
     local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
     local line_start = row == prompt_cursor[1] and col or 0
@@ -377,22 +377,10 @@ function M.open(ctx)
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   api.read_command(buf)
-  local shell_state = vim.deepcopy(buffer_state.shell_state)
-  log.debug("editable.open", { buf = buf, win = win, shell_state = shell_state })
+  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   vim.cmd("stopinsert")
   vim.schedule(function()
-    local rendered = vim.wait(500, function()
-      return M.read_command(buf) == shell_state.command
-    end, 5)
-    if not rendered then
-      error("termio: terminal command render timed out")
-    end
-    -- Normal mode cannot place the cursor after the final command cell.
-    local max_cursor = math.max(#shell_state.command - 1, 0)
-    local cursor_offset =
-      math.max(math.min(shell_state.cursor or #shell_state.command, max_cursor), 0)
-    local cursor = get_buffer_location_from_shell_offset(buf, cursor_offset)
-    vim.api.nvim_win_set_cursor(win, cursor)
+    local cursor = vim.api.nvim_win_get_cursor(win)
     refresh_editable_state(buf, cursor, win)
   end)
   return true

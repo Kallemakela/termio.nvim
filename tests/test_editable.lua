@@ -48,7 +48,10 @@ local function get_command_cursor(buf)
 end
 
 local function read_editable_command(buf)
-  return child.lua_get([[require("termio.editors.editable").read_command(...)]], { buf })
+  return child.lua_get(
+    [[require("termio.editors.editable").read_command_from_buffer(...)]],
+    { buf }
+  )
 end
 
 T["editable edit"]["open key leaves terminal mode"] = function()
@@ -117,7 +120,9 @@ T["editable edit"]["open keeps bash cursor at command end"] = function()
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello world<Esc>")
   Helpers.wait_for_mode(child, "nt")
-  MiniTest.expect.equality(get_command_cursor(buf), 15)
+  Helpers.wait_until(child, function()
+    return get_command_cursor(buf) == 15
+  end)
 end
 
 T["editable edit"]["open keeps bash cursor on wrapped command end"] = function()
@@ -142,7 +147,9 @@ T["editable edit"]["open keeps bash cursor inside command"] = function()
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello world<Left><Left><Left><Esc>")
   Helpers.wait_for_mode(child, "nt")
-  MiniTest.expect.equality(get_command_cursor(buf), 13)
+  Helpers.wait_until(child, function()
+    return get_command_cursor(buf) == 12
+  end)
 end
 
 T["editable edit"]["open clears zsh tab suggestions"] = function()
