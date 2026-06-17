@@ -361,6 +361,23 @@ T["editable edit"]["bxxx defers shell sync until insert"] = function()
   )
 end
 
+T["editable edit"]["xp keeps paste in editor draft"] = function()
+  local buf = Helpers.open_shell(child)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("hello")
+  Helpers.wait_for_read_command(child, buf, "hello")
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("x")
+  Helpers.wait_for_editable_command(child, buf, "hell")
+  child.api.nvim_input("p")
+  Helpers.wait_for_editable_command(child, buf, "hello")
+  child.api.nvim_input("x")
+  Helpers.wait_for_editable_command(child, buf, "hell")
+  child.api.nvim_input("p")
+  Helpers.wait_for_editable_command(child, buf, "hello")
+end
+
 T["editable edit"]["dj on wrapped command does not sync shell state"] = function()
   local buf = Helpers.open_shell(child)
   local command =

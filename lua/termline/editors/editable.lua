@@ -158,6 +158,20 @@ local function sync_change_and_enter_insert(buf, target)
   vim.cmd.startinsert()
 end
 
+local function paste_register_into_editable_buffer(after)
+  -- `normal! p` can take terminal-buffer paste paths. Keep paste as a plain
+  -- buffer edit so the editable draft stays desynced from the shell state.
+  local text = vim.fn.getreg(vim.v.register)
+  local row, col = unpack(vim.api.nvim_win_get_cursor(0))
+  if after then
+    col = col + 1
+  end
+  local lines = vim.split(text, "\n", { plain = true })
+  vim.api.nvim_buf_set_text(0, row - 1, col, row - 1, col, lines)
+  -- Cursor should land on the last inserted character, matching normal paste.
+  vim.api.nvim_win_set_cursor(0, { row + #lines - 1, col + #lines[#lines] - 1 })
+end
+
 ---@param buf integer
 ---@param cursor integer[]
 ---@return integer
@@ -356,12 +370,12 @@ M.setup = function(config)
       vim.keymap.set("n", "p", function()
         log.debug("editable.key.p", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         mark_unsynced_edit(args.buf)
-        vim.cmd("normal! p")
+        paste_register_into_editable_buffer(true)
       end, { buffer = args.buf })
       vim.keymap.set("n", "P", function()
         log.debug("editable.key.P", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         mark_unsynced_edit(args.buf)
-        vim.cmd("normal! P")
+        paste_register_into_editable_buffer(false)
       end, { buffer = args.buf })
       vim.keymap.set("n", "d", function()
         log.debug("editable.key.d", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
