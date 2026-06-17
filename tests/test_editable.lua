@@ -44,7 +44,7 @@ end
 
 local function get_command_cursor(buf)
   local win = child.api.nvim_get_current_win()
-  return child.lua_get([=[require("termio").command_cursor(...)[2]]=], { win, buf })
+  return child.lua_get([=[require("termio.api").command_cursor(...)[2]]=], { win, buf })
 end
 
 local function read_editable_command(buf)
@@ -111,8 +111,17 @@ T["editable edit"]["open stores current shell state"] = function()
   )
 end
 
+T["editable edit"]["open keeps bash cursor at command end"] = function()
+  local buf = Helpers.open_shell(child, "$ ", "bash")
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world<Esc>")
+  Helpers.wait_for_mode(child, "nt")
+  MiniTest.expect.equality(get_command_cursor(buf), 15)
+end
+
 T["editable edit"]["open clears zsh tab suggestions"] = function()
-  local buf = Helpers.open_shell(child)
+  local buf = Helpers.open_shell(child, "$ ", "zsh")
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("ls <Tab>")
