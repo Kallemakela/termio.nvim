@@ -107,26 +107,49 @@ function M.is_cursor_in_editable_zone(buf, cursor)
   return row ~= zone.end_row or col <= zone.end_col
 end
 
----Check if cursor is outside the editable zone and move it back if needed.
 ---@param buf integer
 ---@param cursor integer[]
----@param win? integer
-local function refresh_editable_state(buf, cursor, win)
-  win = win or 0
+---@return integer[] cursor
+local function clamp_cursor_to_editable_zone(buf, cursor)
   local prompt_cursor = M.buffers[buf].promt_cursor
   if prompt_cursor and cursor[1] == prompt_cursor[1] and cursor[2] < prompt_cursor[2] then
-    cursor[2] = prompt_cursor[2]
-    vim.api.nvim_win_set_cursor(win, cursor)
+    return { cursor[1], prompt_cursor[2] }
   end
   local zone = M.get_editable_zone(buf)
   if zone and is_position_after(cursor[1], cursor[2], { zone.end_row, zone.end_col }) then
-    cursor = M.buffers[buf].last_editable_cursor or { zone.end_row, zone.end_col }
-    vim.api.nvim_win_set_cursor(win, cursor)
+    return M.buffers[buf].last_editable_cursor or { zone.end_row, zone.end_col }
   end
-  if M.is_cursor_in_editable_zone(buf, cursor) then
+  return cursor
+end
+
+---@param win integer
+---@param current_cursor integer[]
+---@param target_cursor integer[]
+local function move_cursor_if_needed(win, current_cursor, target_cursor)
+  if current_cursor[1] ~= target_cursor[1] or current_cursor[2] ~= target_cursor[2] then
+    vim.api.nvim_win_set_cursor(win, target_cursor)
+  end
+end
+
+---@param buf integer
+---@param cursor integer[]
+---@param win? integer
+---@return integer[] cursor
+local function move_cursor_back_to_editable_zone(buf, cursor, win)
+  win = win or 0
+  local clamped_cursor = clamp_cursor_to_editable_zone(buf, cursor)
+  move_cursor_if_needed(win, cursor, clamped_cursor)
+  return clamped_cursor
+end
+
+---Refresh editable state from the current cursor position.
+---@param buf integer
+---@param cursor integer[]
+local function refresh_editable_state(buf, cursor)
+  vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
+  if vim.bo[buf].modifiable then
     M.buffers[buf].last_editable_cursor = vim.deepcopy(cursor)
   end
-  vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
 end
 
 ---@param buf integer
@@ -381,7 +404,7 @@ function M.open(ctx)
   vim.cmd("stopinsert")
   vim.schedule(function()
     local cursor = vim.api.nvim_win_get_cursor(win)
-    refresh_editable_state(buf, cursor, win)
+    cursor = move_cursor_back_to_editable_zone(buf, cursor, win)
   end)
   return true
 end
@@ -566,7 +589,6 @@ M.setup = function(config)
               end
             end
           end
-          refresh_editable_state(args.buf, cursor)
         end,
       })
       vim.api.nvim_create_autocmd("TermRequest", {
