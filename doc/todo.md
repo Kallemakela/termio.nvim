@@ -17,7 +17,6 @@
 ## Chores
 
 update docs to match current zsh only state
-document shell-specific completion behavior
 
 ## Investigate
 
