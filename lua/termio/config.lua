@@ -5,15 +5,22 @@ M.defaults = {
   editor = {
     type = "editable",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
-    open = "<Esc>",
     is_disabled = function()
       return false
     end,
     keys = {
-      ["<CR>"] = { action = "submit", mode = { "n", "i" } },
-      ["<C-u>"] = { action = "clear", mode = { "n", "i" } },
-      ["<C-s>"] = { action = "write", mode = { "n", "i" } },
-      ["<Esc>"] = { action = "save_and_close", mode = { "n" } },
+      t = {
+        ["<Esc>"] = "open",
+        ["<CR>"] = "submit",
+        ["<C-u>"] = "clear",
+        ["<C-s>"] = "write",
+      },
+      n = {
+        ["<CR>"] = "submit",
+        ["<C-u>"] = "clear",
+        ["<C-s>"] = "write",
+        ["<Esc>"] = "save_and_close",
+      },
     },
   },
   debug = false,

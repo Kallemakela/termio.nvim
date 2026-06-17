@@ -385,14 +385,16 @@ end
 
 local function apply_keymaps(buf)
   local handlers = {
-    open = function()
-      log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
-      local ok, opened = pcall(M.open, { target_buf = buf })
-      if not ok then
-        vim.notify(opened, vim.log.levels.WARN)
-      end
-      if not ok or opened == false then
-        helpers.send_keys(config.options.editor.open, buf)
+    open = function(lhs)
+      return function()
+        log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
+        local ok, opened = pcall(M.open, { target_buf = buf })
+        if not ok then
+          vim.notify(opened, vim.log.levels.WARN)
+        end
+        if not ok or opened == false then
+          helpers.send_keys(lhs, buf)
+        end
       end
     end,
     submit = function()
@@ -411,19 +413,16 @@ local function apply_keymaps(buf)
       M.write(buf)
     end,
   }
-  vim.keymap.set(
-    "t",
-    config.options.editor.open,
-    handlers.open,
-    { buffer = buf, desc = "Edit terminal command" }
-  )
-  for lhs, spec in pairs(config.options.editor.keys) do
-    local mode = vim.tbl_map(function(keymap_mode)
-      return keymap_mode == "i" and "t" or keymap_mode
-    end, spec.mode)
-    local handler = handlers[spec.action]
+  for lhs, action in pairs(config.options.editor.keys.t) do
+    local handler = action == "open" and handlers.open(lhs) or handlers[action]
     if handler then
-      vim.keymap.set(mode, lhs, handler, { buffer = buf })
+      vim.keymap.set("t", lhs, handler, { buffer = buf })
+    end
+  end
+  for lhs, action in pairs(config.options.editor.keys.n) do
+    local handler = handlers[action]
+    if handler then
+      vim.keymap.set("n", lhs, handler, { buffer = buf })
     end
   end
 end

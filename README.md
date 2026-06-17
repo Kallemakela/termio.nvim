@@ -41,7 +41,6 @@ require("termio").setup({
   editor = {
     type = "editable",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?zsh( |$)]],
-    open = "<Esc>",
     is_disabled = function(buf)
       -- Example, assuming you track if TUI active in terminal
       -- See `./doc/tui-detection.md` for tracking alt-screen/TUI state.
@@ -49,10 +48,18 @@ require("termio").setup({
       return false
     end,
     keys = {
-      ["<CR>"] = { action = "submit", mode = { "n", "i" } },
-      ["<C-u>"] = { action = "clear", mode = { "n", "i" } },
-      ["<C-s>"] = { action = "write", mode = { "n", "i" } },
-      ["<Esc>"] = { action = "save_and_close", mode = { "n" } },
+      t = {
+        ["<Esc>"] = "open",
+        ["<CR>"] = "submit",
+        ["<C-u>"] = "clear",
+        ["<C-s>"] = "write",
+      },
+      n = {
+        ["<CR>"] = "submit",
+        ["<C-u>"] = "clear",
+        ["<C-s>"] = "write",
+        ["<Esc>"] = "save_and_close",
+      },
     },
   },
   -- true: vim.notify debug events. function(event, data): custom logger.
