@@ -18,7 +18,7 @@ local function write_long_lorem_with_zle()
     return pcall(termio.read_command, buf)
   end, 20)
   if not ready then
-    error("termio dev: zsh integration is not ready")
+    error("termio dev: shell integration is not ready")
   end
   termio.write_command(long_lorem, buf)
 end

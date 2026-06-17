@@ -1,8 +1,10 @@
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
+local zsh = require("termio.shell_integration.zsh")
 
 local M = {}
 local buffers = {}
+local shells = { zsh }
 
 ---@param buffer_state table<integer, table>
 function M.use_buffers(buffer_state)
@@ -48,6 +50,7 @@ local function send_shell_action(buf, action, payload)
     end, 5)
   end
   send_fifo_frame(buf, action, payload)
+  state.shell_integration.after_send_action(buf, state)
 end
 
 ---@param value string
@@ -82,8 +85,20 @@ end
 ---@param sequence string
 ---@param state table
 local function update_shell_integration(sequence, state)
-  state.shell_fifo_path = sequence:match("^\27]633;I;([^\7]*)")
-  log.debug("shell integration ready", { fifo = state.shell_fifo_path })
+  local payload = sequence:match("^\27]633;I;([^\7]*)")
+  if not payload then
+    return
+  end
+  for _, shell in ipairs(shells) do
+    local fifo_path = shell.parse_fifo_path(payload)
+    if fifo_path then
+      state.shell_fifo_path = fifo_path
+      state.shell_kind = shell.kind
+      state.shell_integration = shell
+      break
+    end
+  end
+  log.debug("shell integration ready", { fifo = state.shell_fifo_path, shell = state.shell_kind })
 end
 
 ---Handle shell integration terminal markers.
@@ -111,7 +126,7 @@ function M.handle_term_request(args)
   end
 end
 
----Query the current zsh BUFFER.
+---Query the current shell command buffer.
 ---@param buf integer
 ---@param timeout_ms? integer
 ---@return string
@@ -125,7 +140,7 @@ function M.read_command(buf, timeout_ms)
   if not received then
     error("termio: shell command query timed out")
   end
-  -- FIFO query replies can arrive before Neovim has processed zle redraw bytes
+  -- FIFO query replies can arrive before Neovim has processed shell redraw bytes
   -- from the terminal PTY. Let the channel drain before callers read screen text.
   vim.wait(20, function()
     return false
@@ -138,7 +153,7 @@ function M.clear_completion_suggestions(buf)
   send_shell_action(buf, "clear-completions", "")
 end
 
----Write zsh BUFFER directly.
+---Write shell command buffer directly.
 ---@param buf integer
 ---@param command string
 ---@param cursor integer

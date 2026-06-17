@@ -18,7 +18,7 @@ local function assert_prompt_range(buf)
   return state.prompt_start_cursor, state.prompt_end_cursor
 end
 
----Query the current zsh BUFFER.
+---Query the current shell command buffer.
 ---@param buf? integer
 ---@param timeout_ms? integer
 ---@return string
@@ -28,7 +28,7 @@ function M.read_command(buf, timeout_ms)
   return shell_integration.read_command(target, timeout_ms)
 end
 
----Hide zsh completion suggestions shown below the prompt.
+---Hide shell completion suggestions shown below the prompt.
 ---@param buf? integer
 function M.clear_completion_suggestions(buf)
   local target = helpers.current_buf(buf)
@@ -36,7 +36,7 @@ function M.clear_completion_suggestions(buf)
   shell_integration.clear_completion_suggestions(target)
 end
 
----Write zsh BUFFER directly.
+---Write shell command buffer directly.
 ---@param command string
 ---@param buf? integer
 ---@param cursor? integer

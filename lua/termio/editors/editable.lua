@@ -429,7 +429,7 @@ end
 
 ---@param config EditableTermConfig
 M.setup = function(config)
-  M.buffers = {}
+  M.buffers = M.buffers or {}
   M.promts = (config or {}).promts
   vim.api.nvim_create_autocmd("TermOpen", {
     group = vim.api.nvim_create_augroup("editable-term", {}),
@@ -437,14 +437,14 @@ M.setup = function(config)
       if not helpers.is_enabled_terminal(args.buf) then
         return
       end
-      log.debug("editable.term_open", { buf = args.buf })
-      apply_keymaps(args.buf)
-      local editgroup =
-        vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
       M.buffers[args.buf] = {
         has_unsynced_edits = false,
         sync_block_reason = "term_leave",
       }
+      log.debug("editable.term_open", { buf = args.buf })
+      apply_keymaps(args.buf)
+      local editgroup =
+        vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
       vim.keymap.set("n", "A", function()
         log.debug("editable.key.A", { buf = args.buf })
         enter_insert_with_target(args.buf, {
