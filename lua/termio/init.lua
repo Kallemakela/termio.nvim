@@ -34,7 +34,7 @@ end
 ---@param opts? table
 function M.setup(opts)
   config.setup(opts)
-  state.enable()
+  state.enable({ notify = false })
   commands.setup()
   local editor = load_editor()
   if editor then

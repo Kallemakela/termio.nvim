@@ -2,6 +2,7 @@ local config = require("termio.config")
 local api = require("termio.api")
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
+local state = require("termio.state")
 local M = {}
 local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
 -- `g@` calls operatorfunc after the keymap returns, so keep the selected
@@ -411,6 +412,10 @@ local function apply_keymaps(buf)
     write = function()
       log.debug("editable.key.write", { buf = buf, mode = vim.api.nvim_get_mode().mode })
       M.write(buf)
+    end,
+    toggle = function()
+      log.debug("editable.key.toggle", { buf = buf, mode = vim.api.nvim_get_mode().mode })
+      state.toggle()
     end,
   }
   for lhs, action in pairs(config.options.editor.keys.t) do
