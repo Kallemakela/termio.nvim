@@ -1,36 +1,9 @@
 local M = { buffers = {} }
 local config = require("termline.config")
 local helpers = require("termline.util.helpers")
+local shell_integration = require("termline.shell_integration.general")
 
----@param buf integer
----@return integer
-local function assert_shell_pid(buf)
-  local job_id = vim.b[buf].terminal_job_id
-  local pid = job_id and vim.fn.jobpid(job_id)
-  if not pid or pid <= 0 then
-    error("termline: missing terminal job pid")
-  end
-  return pid
-end
-
-local function signal_shell(buf, signal)
-  vim.uv.kill(assert_shell_pid(buf), signal)
-end
-
----@param buf integer
----@return string
-local function shell_control_file(buf)
-  return (vim.env.TMPDIR or "/tmp") .. "/termline.nvim." .. assert_shell_pid(buf) .. ".control"
-end
-
----@param buf integer
----@param lines string[]
-local function send_shell_control(buf, lines)
-  local file = shell_control_file(buf)
-  vim.fn.writefile(lines, file, "b")
-  signal_shell(buf, vim.uv.constants.SIGUSR2)
-  return file
-end
+shell_integration.use_buffers(M.buffers)
 
 ---@param buf integer
 ---@return integer[], integer[]
@@ -52,16 +25,7 @@ end
 function M.read_command(buf, timeout_ms)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local state = helpers.ensure_buffer_state(M.buffers, target)
-  state.shell_query_pending = true
-  signal_shell(target, vim.uv.constants.SIGUSR1)
-  local received = vim.wait(timeout_ms or 200, function()
-    return state.shell_query_pending == false
-  end, 5)
-  if not received then
-    error("termline: shell command query timed out")
-  end
-  return state.shell_state.command
+  return shell_integration.read_command(target, timeout_ms)
 end
 
 ---Hide zsh completion suggestions shown below the prompt.
@@ -69,10 +33,7 @@ end
 function M.clear_completion_suggestions(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local file = send_shell_control(target, { "clear-completions" })
-  vim.wait(100, function()
-    return vim.fn.filereadable(file) == 0
-  end, 5)
+  shell_integration.clear_completion_suggestions(target)
 end
 
 ---Write zsh BUFFER directly.
@@ -87,17 +48,7 @@ function M.write_command(command, buf, cursor)
   end
   local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
-  local state = helpers.ensure_buffer_state(M.buffers, target)
-  state.shell_write_pending = true
-  send_shell_control(target, { "write", tostring(shell_cursor), shell_command })
-  local applied = vim.wait(500, function()
-    return state.shell_write_pending == false
-  end, 5)
-  if not applied then
-    error("termline: shell command write timed out")
-  end
-  state.shell_state.command = shell_command
-  state.shell_state.cursor = shell_cursor
+  shell_integration.write_command(target, shell_command, shell_cursor)
 end
 
 ---@param win integer
