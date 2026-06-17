@@ -68,6 +68,26 @@ local function is_position_after(row, col, target)
   return row > target[1] or (row == target[1] and col > target[2])
 end
 
+---Convert a command-text byte offset back to a terminal buffer cursor.
+---@param buf integer
+---@param offset integer offset from prompt end
+---@return integer[] cursor 1-based row, 0-based column
+local function get_buffer_location_from_shell_offset(buf, offset)
+  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
+  local row = prompt_row
+  local col = prompt_col + offset
+  local line_count = vim.api.nvim_buf_line_count(buf)
+  while row < line_count do
+    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
+    if col <= #line then
+      return { row, col }
+    end
+    col = col - #line
+    row = row + 1
+  end
+  return { row, col }
+end
+
 ---Return the editable command zone in the terminal buffer.
 ---@param buf? integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
@@ -107,19 +127,41 @@ function M.is_cursor_in_editable_zone(buf, cursor)
   return row ~= zone.end_row or col <= zone.end_col
 end
 
----@param buf integer
 ---@param cursor integer[]
+---@param min_cursor integer[]
+---@param max_cursor integer[]
 ---@return integer[] cursor
-local function clamp_cursor_to_editable_zone(buf, cursor)
-  local prompt_cursor = M.buffers[buf].promt_cursor
-  if prompt_cursor and cursor[1] == prompt_cursor[1] and cursor[2] < prompt_cursor[2] then
-    return { cursor[1], prompt_cursor[2] }
+local function clamp_cursor(cursor, min_cursor, max_cursor)
+  if is_position_after(min_cursor[1], min_cursor[2], max_cursor) then
+    max_cursor = min_cursor
   end
-  local zone = M.get_editable_zone(buf)
-  if zone and is_position_after(cursor[1], cursor[2], { zone.end_row, zone.end_col }) then
-    return M.buffers[buf].last_editable_cursor or { zone.end_row, zone.end_col }
+  if cursor[1] == min_cursor[1] and cursor[2] < min_cursor[2] then
+    return min_cursor
+  end
+  if is_position_after(cursor[1], cursor[2], max_cursor) then
+    return max_cursor
   end
   return cursor
+end
+
+---@param buf integer
+---@param cursor integer[]
+---@param command_length? integer
+---@return integer[] cursor
+local function clamp_cursor_to_editable_zone(buf, cursor, command_length)
+  local prompt_cursor = M.buffers[buf].promt_cursor
+  if not prompt_cursor then
+    return cursor
+  end
+  local zone = M.get_editable_zone(buf)
+  if not zone then
+    return cursor
+  end
+  local max_cursor = { zone.end_row, zone.end_col }
+  if command_length then
+    max_cursor = get_buffer_location_from_shell_offset(buf, math.max(command_length - 1, 0))
+  end
+  return clamp_cursor(cursor, prompt_cursor, max_cursor)
 end
 
 ---@param win integer
@@ -134,10 +176,11 @@ end
 ---@param buf integer
 ---@param cursor integer[]
 ---@param win? integer
+---@param command_length? integer
 ---@return integer[] cursor
-local function move_cursor_back_to_editable_zone(buf, cursor, win)
+local function move_cursor_back_to_editable_zone(buf, cursor, win, command_length)
   win = win or 0
-  local clamped_cursor = clamp_cursor_to_editable_zone(buf, cursor)
+  local clamped_cursor = clamp_cursor_to_editable_zone(buf, cursor, command_length)
   move_cursor_if_needed(win, cursor, clamped_cursor)
   return clamped_cursor
 end
@@ -271,26 +314,6 @@ local function get_shell_cursor_offset(buf, cursor)
   return offset
 end
 
----Convert a command-text byte offset back to a terminal buffer cursor.
----@param buf integer
----@param offset integer offset from prompt end
----@return integer[] cursor 1-based row, 0-based column
-local function get_buffer_location_from_shell_offset(buf, offset)
-  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
-  local row = prompt_row
-  local col = prompt_col + offset
-  local line_count = vim.api.nvim_buf_line_count(buf)
-  while row < line_count do
-    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
-    if col <= #line then
-      return { row, col }
-    end
-    col = col - #line
-    row = row + 1
-  end
-  return { row, col }
-end
-
 ---Return the command offset where the current operator motion started.
 ---@param buf integer
 ---@return integer offset
@@ -405,6 +428,7 @@ function M.open(ctx)
   vim.schedule(function()
     local cursor = vim.api.nvim_win_get_cursor(win)
     cursor = move_cursor_back_to_editable_zone(buf, cursor, win)
+    refresh_editable_state(buf, cursor)
   end)
   return true
 end
