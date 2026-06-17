@@ -1,4 +1,5 @@
 local api = require("termio.api")
+local state = require("termio.state")
 
 local M = {}
 
@@ -10,6 +11,9 @@ function M.setup()
   vim.api.nvim_create_user_command("TermioWriteCommand", function(opts)
     api.write_command(opts.args)
   end, { nargs = "*" })
+  vim.api.nvim_create_user_command("TermioEnable", state.enable, {})
+  vim.api.nvim_create_user_command("TermioDisable", state.disable, {})
+  vim.api.nvim_create_user_command("TermioToggle", state.toggle, {})
 end
 
 return M

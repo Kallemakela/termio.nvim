@@ -78,6 +78,9 @@ User commands target the current terminal buffer.
 ```vim
 :TermioReadCommand
 :TermioWriteCommand echo hello
+:TermioEnable
+:TermioDisable
+:TermioToggle
 ```
 
 ## Terms
