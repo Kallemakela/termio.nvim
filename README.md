@@ -5,7 +5,9 @@
 
 Edit the terminal buffer like any other text buffer with minimal latency.
 
-<img width="1600" height="808" alt="screen-recording" src="https://github.com/user-attachments/assets/8c9786fd-bf7c-48e0-818a-7b97a02f643a" />
+<img width="1600" height="795" alt="screen-recording-new" src="https://github.com/user-attachments/assets/9e546153-4f5e-4d87-a1c6-18f3a85fa9a3" />
+
+<br>
 
 Provides a read/write API + a bundled 'editor' for the terminal buffer.
 Set `editor = nil` to only load the API.
