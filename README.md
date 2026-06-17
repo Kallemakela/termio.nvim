@@ -3,18 +3,13 @@
 > [!NOTE]
 > WIP. Expect bugs.
 
-<img width="1600" height="808" alt="screen-recording" src="https://github.com/user-attachments/assets/8c9786fd-bf7c-48e0-818a-7b97a02f643a" />
-
 Edit the terminal buffer like any other text buffer with minimal latency.
+
+<img width="1600" height="808" alt="screen-recording" src="https://github.com/user-attachments/assets/8c9786fd-bf7c-48e0-818a-7b97a02f643a" />
 
 Provides a read/write API + a bundled 'editor' for the terminal buffer.
 Set `editor = nil` to only load the API.
-
-## Branches 
-
-Current branch only supports zsh.
-Old general (and much more hacky and complex) `nvim_chan_send` based implementation is on branch `old`.
-The main reason for making this zsh only is that this allows to not send a lot of characters/bytes to the neovim terminal, which causes lag, visible jitter and race conditions in some cases. With the zsh only approach we can simply overwrite the zle state to sync our editable buffer to the shell.
+Currently only supports zsh.
 I suspect it is easy to add support for other shells as well with the current branch's minimal approach, but zsh is enough for me.
 
 ## Setup
