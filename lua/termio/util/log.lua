@@ -9,10 +9,26 @@ local function append_log(line, history, verbose)
   vim.api.nvim_echo({ { line } }, history, { verbose = verbose })
 end
 
+local function should_skip_default_debug_output(event, data)
+  local options = require("termio.config").options
+  local debug = options and options.debug
+  if debug == false or debug == nil then
+    return true
+  end
+  if type(debug) == "function" then
+    debug(event, data)
+    return true
+  end
+  return false
+end
+
 ---Write a timestamped debug event.
 ---@param event string
 ---@param data any
 function M.debug(event, data)
+  if should_skip_default_debug_output(event, data) then
+    return
+  end
   append_log(string.format("%s %s %s", timestamp(), event, vim.inspect(data)), false, true)
 end
 
@@ -26,6 +42,9 @@ end
 ---@param event string
 ---@param lines string[]
 function M.debug_lines(event, lines)
+  if should_skip_default_debug_output(event, lines) then
+    return
+  end
   append_log(string.format("%s %s", timestamp(), event), false, true)
   for _, line in ipairs(lines) do
     append_log(line, false, true)
