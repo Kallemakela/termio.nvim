@@ -27,6 +27,7 @@ always start with reading `README.md`
     - If you are iterating on a problem, always use this since it keeps debug logs clean.
     - You should always check debug logs when iterating on a single test.
 - Test debug.log output goes to `./tmp/test.out`.
+- Do NOT run multiple test commands at the same time. This causes issues.
 
 ### Interactive
 - Use the dev harness to run arbitrary workflows with the correct setup:
