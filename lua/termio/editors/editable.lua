@@ -331,7 +331,8 @@ local function delete_operator_motion_range(motion_type)
 end
 
 local function keep_cursor_at_command_offset(buf, offset)
-  vim.api.nvim_win_set_cursor(0, get_buffer_location_from_shell_offset(buf, offset))
+  local cursor = get_buffer_location_from_shell_offset(buf, offset)
+  move_cursor_back_to_editable_zone(buf, cursor)
 end
 
 ---Sync the deleted draft to the shell and continue in terminal insert mode.
@@ -347,6 +348,9 @@ end
 function M.apply_delete_operator(motion_type)
   local buf = vim.api.nvim_get_current_buf()
   local offset = command_offset_at_operator_start(buf)
+  -- pending_after_delete_operator should handle keeping cursor at correct position
+  -- for c{motion}, this happens by going to 't' mode which clamps cursor
+  -- for d{motion}, we manually apply keep_cursor_at_command_offset
   local after_delete = pending_after_delete_operator or keep_cursor_at_command_offset
   pending_after_delete_operator = nil
   mark_unsynced_edit(buf)

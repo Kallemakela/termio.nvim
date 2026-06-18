@@ -490,6 +490,21 @@ T["editable edit"]["dj on wrapped command does not sync shell state"] = function
   )
 end
 
+T["editable edit"]["dj on wrapped command keeps cursor inside editable command"] = function()
+  local buf = Helpers.open_shell(child)
+  local command =
+    "echo lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur excepteur sint occaecat cupidatat non proident sunt in culpa qui officia deserunt mollit anim id est laborum lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua ut enim ad minim veniam quis nostrud exercitation ullamco laboris nisi"
+  child.set_size(24, 80)
+  child.cmd("startinsert")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  enter_editable_normal_mode(buf)
+  child.api.nvim_input("dj")
+  Helpers.wait_for_mode(child, "nt")
+  MiniTest.expect.equality(child.api.nvim_get_option_value("modifiable", { buf = buf }), true)
+end
+
 -- Disabled while debugging editable-buffer sync corruption.
 -- Ruled out so far:
 -- - extra delay after leaving terminal mode
