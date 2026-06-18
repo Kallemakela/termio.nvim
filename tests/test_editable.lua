@@ -97,6 +97,26 @@ T["editable edit"]["disable stops editor open"] = function()
   )
 end
 
+T["editable edit"]["normal insert keys do nothing when disabled"] = function()
+  Helpers.setup_child(
+    child,
+    [=[{ editor = { type = "editable", terminal_name_pattern = [[/bin/sh]] } }]=]
+  )
+  child.cmd("terminal /bin/sh")
+  local buf = child.api.nvim_get_current_buf()
+  child.lua([[require("termio").disable()]])
+  child.api.nvim_input([[<C-\><C-n>]])
+  Helpers.wait_for_mode(child, "nt")
+  child.api.nvim_input("a")
+  child.wait(100)
+  Helpers.expect.no_match(
+    child.lua_get([[vim.api.nvim_exec2("messages", { output = true }).output]]),
+    "prompt_cursor"
+  )
+  MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
+  MiniTest.expect.equality(child.api.nvim_get_current_buf(), buf)
+end
+
 T["editable edit"]["open stores current shell state"] = function()
   local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
