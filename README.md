@@ -14,7 +14,10 @@ Set `editor = nil` to only load the API.
 Currently supports zsh and bash.
 It is easy to add support for other shells as well if needed.
 
+
 ## Setup
+
+### Shell
 
 In zsh startup, e.g. in `~/.zshrc`:
 ```zsh
@@ -28,10 +31,34 @@ fi
 
 In bash startup, e.g. in `~/.bashrc`:
 ```bash
-source /path/to/termio.nvim/shell/termio.bash
+if [ -n "$NVIM" ]; then
+  source "$HOME/code/nvim/termio.nvim/shell/termio.bash"
+fi
 ```
 
-In neovim:
+### Neovim
+
+<details>
+<summary>With <a href="https://neovim.io/doc/user/pack.html#vim.pack">vim.pack</a> (Neovim 0.12+)</summary>
+
+```lua
+vim.pack.add({ "https://github.com/Kallemakela/termio.nvim" })
+```
+
+</details>
+
+<details>
+<summary>With <a href="https://github.com/folke/lazy.nvim">lazy.nvim</a></summary>
+</details>
+
+```lua
+{
+  "Kallemakela/termio.nvim",
+  opts = {},
+}
+```
+
+Or just on startup:
 ```lua
 require("termio").setup()
 ```
