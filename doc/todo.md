@@ -8,6 +8,8 @@
 
 ## Features
 
+### add simple markers to tab complete
+
 ### fish support
 - fish has `commandline -f repaint` so should work like zsh
 
