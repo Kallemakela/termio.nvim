@@ -86,6 +86,21 @@ end
 
 local function update_prompt(args, state)
   state.prompt_end_cursor = args.data.cursor
+  state.shell_phase = "input"
+end
+
+local function update_prompt_start(args, state)
+  state.prompt_start_cursor = args.data.cursor
+  state.shell_phase = "prompt"
+end
+
+local function update_command_start(state)
+  state.shell_phase = "output"
+end
+
+local function update_command_done(sequence, state)
+  state.shell_phase = "finished"
+  state.shell_exit_status = tonumber(sequence:match("^\27]133;D;?(%d*)"))
   clear_shell_state(state.shell_state)
 end
 
@@ -98,6 +113,7 @@ local function update_shell_query(sequence, state)
   end
   state.shell_state.command = unescape_shell_payload(command)
   state.shell_state.cursor = tonumber(cursor)
+  state.shell_phase = "input"
   state.shell_query_pending = false
 end
 
@@ -125,11 +141,19 @@ end
 function M.handle_term_request(args)
   local state = helpers.ensure_buffer_state(buffers, args.buf)
   if args.data.sequence:match("^\27]133;A") then
-    state.prompt_start_cursor = args.data.cursor
+    update_prompt_start(args, state)
     return
   end
   if args.data.sequence:match("^\27]133;B") then
     update_prompt(args, state)
+    return
+  end
+  if args.data.sequence:match("^\27]133;C") then
+    update_command_start(state)
+    return
+  end
+  if args.data.sequence:match("^\27]133;D") then
+    update_command_done(args.data.sequence, state)
     return
   end
   if args.data.sequence:match("^\27]633;I") then

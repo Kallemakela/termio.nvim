@@ -1,1 +1,19 @@
+if [[ -z "${__TERMIO_TEST_MARKERS_LOADED:-}" ]]; then
+  __TERMIO_TEST_MARKERS_LOADED=1
+  __termio_test_prompt_seen=0
+
+  __termio_test_prompt_marker() {
+    local exit_status=$?
+    if [[ "$__termio_test_prompt_seen" == 1 ]]; then
+      printf '\033]133;D;%s\a' "$exit_status"
+    fi
+    __termio_test_prompt_seen=1
+    printf '\033]133;A\a'
+  }
+
+  PROMPT_COMMAND=__termio_test_prompt_marker
+  PS0=$'\033]133;C;\a'
+  PS1="${PS1:-$ }"$'\[\033]133;B\a\]'
+fi
+
 source "$TERMIO_REPO_ROOT/shell/termio.bash"

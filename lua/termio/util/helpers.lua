@@ -96,6 +96,7 @@ function M.ensure_buffer_state(buffers, buf)
     or {
       prompt_start_cursor = nil,
       prompt_end_cursor = nil,
+      shell_phase = nil,
       shell_fifo_path = nil,
       shell_state = { command = "", cursor = nil },
     }

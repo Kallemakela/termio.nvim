@@ -323,25 +323,10 @@ Helpers.open_shell = function(child, prompt, shell)
     error("unsupported test shell: " .. shell)
   end
   local buf = child.api.nvim_get_current_buf()
-  -- Terminal startup is async; wait for the prompt itself so the synthetic
-  -- OSC133 marker lands at the prompt boundary instead of transient shell output.
+  -- Terminal startup is async; wait until the test shell emitted its prompt.
   Helpers.wait_until(child, function()
     return child.api.nvim_get_current_line():match("^" .. vim.pesc(prompt) .. "%s*$") ~= nil
   end)
-  local cursor = child.get_cursor()
-  -- Terminal window cursor col is not reliable here; inject prompt-end from the prompt text.
-  cursor[2] = #prompt
-  -- Test shells do not emit OSC133 prompt markers, so inject prompt bounds here.
-  child.api.nvim_exec_autocmds("TermRequest", {
-    buffer = buf,
-    modeline = false,
-    data = { sequence = "\27]133;A", cursor = { cursor[1], 0 } },
-  })
-  child.api.nvim_exec_autocmds("TermRequest", {
-    buffer = buf,
-    modeline = false,
-    data = { sequence = "\27]133;B", cursor = cursor },
-  })
   return buf
 end
 
