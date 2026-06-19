@@ -14,7 +14,9 @@ M.defaults = {
     -- Let terminal PTY redraw bytes drain after a query reply.
     read_render_drain_ms = 20,
     -- Ignore redraw-triggered TextChanged briefly after writing to the shell.
-    editable_write_guard_ms = 50,
+    -- This was needed when text write was done via nvim_chan_send, which could trigger
+    -- the written text as user input. Might not be needed anymore.
+    editable_write_guard_ms = 0,
     -- Let bash render the command after waking readline.
     bash_wake_render_ms = 30,
   },
