@@ -8,6 +8,22 @@ local M = {}
 local buffers = {}
 local shells = { bash, zsh }
 
+local function wait_for_timeout_poll(name, timeout, predicate, data)
+  local started = vim.uv.hrtime()
+  local completed = vim.wait(timeout.limit_ms, predicate, timeout.interval_ms)
+  log.debug(
+    "shell timeout poll",
+    vim.tbl_extend("force", data or {}, {
+      name = name,
+      completed = completed,
+      elapsed_ms = math.floor((vim.uv.hrtime() - started) / 1e6),
+      limit_ms = timeout.limit_ms,
+      interval_ms = timeout.interval_ms,
+    })
+  )
+  return completed
+end
+
 ---@param buffer_state table<integer, table>
 function M.use_buffers(buffer_state)
   buffers = buffer_state
@@ -48,9 +64,9 @@ local function send_shell_action(buf, action, payload)
   local state = helpers.ensure_buffer_state(buffers, buf)
   if not state.shell_fifo_path then
     local timeout = config.options.timeouts.fifo_ready
-    vim.wait(timeout.limit_ms, function()
+    wait_for_timeout_poll("fifo_ready", timeout, function()
       return state.shell_fifo_path ~= nil
-    end, timeout.interval_ms)
+    end, { buf = buf, action = action })
   end
   send_fifo_frame(buf, action, payload)
   state.shell_integration.after_send_action(buf, state)
@@ -138,9 +154,11 @@ function M.read_command(buf, timeout_ms)
   state.shell_query_pending = true
   send_shell_action(buf, "query", "")
   local timeout = config.options.timeouts.read_command
-  local received = vim.wait(timeout_ms or timeout.limit_ms, function()
+  local active_timeout =
+    vim.tbl_extend("force", timeout, { limit_ms = timeout_ms or timeout.limit_ms })
+  local received = wait_for_timeout_poll("read_command", active_timeout, function()
     return state.shell_query_pending == false
-  end, timeout.interval_ms)
+  end, { buf = buf })
   if not received then
     error("termio: shell command query timed out")
   end
@@ -167,9 +185,9 @@ function M.write_command(buf, command, cursor)
   state.shell_write_pending = true
   send_shell_action(buf, "write", tostring(cursor) .. "\t" .. escape_fifo_payload(command))
   local timeout = config.options.timeouts.write_command
-  local applied = vim.wait(timeout.limit_ms, function()
+  local applied = wait_for_timeout_poll("write_command", timeout, function()
     return state.shell_write_pending == false
-  end, timeout.interval_ms)
+  end, { buf = buf })
   if not applied then
     error("termio: shell command write timed out")
   end

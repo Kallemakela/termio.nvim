@@ -4,11 +4,11 @@ M.defaults = {
   write_strip_patterns = { "\n" },
   timeouts = {
     -- Poll for shell integration to publish its FIFO after terminal startup.
-    fifo_ready = { limit_ms = 500, interval_ms = 5 },
+    fifo_ready = { limit_ms = 50, interval_ms = 2 },
     -- Poll for a shell query reply before read_command() fails.
-    read_command = { limit_ms = 500, interval_ms = 5 },
+    read_command = { limit_ms = 50, interval_ms = 2 },
     -- Poll for a shell write acknowledgement before write_command() fails.
-    write_command = { limit_ms = 500, interval_ms = 5 },
+    write_command = { limit_ms = 50, interval_ms = 2 },
   },
   waits = {
     -- Let terminal PTY redraw bytes drain after a query reply.
