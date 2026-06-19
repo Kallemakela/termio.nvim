@@ -209,7 +209,7 @@ function M.write(buf, target)
   end
   local command = target.command
   local cursor = target.cursor
-  local delay = 50
+  local delay = config.options.waits.editable_write_guard_ms
   log.debug("editable.write.start", {
     buf = buf,
     has_target = next(target) ~= nil,

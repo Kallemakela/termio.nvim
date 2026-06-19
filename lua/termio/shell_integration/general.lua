@@ -1,4 +1,5 @@
 local helpers = require("termio.util.helpers")
+local config = require("termio.config")
 local log = require("termio.util.log")
 local bash = require("termio.shell_integration.bash")
 local zsh = require("termio.shell_integration.zsh")
@@ -46,9 +47,10 @@ end
 local function send_shell_action(buf, action, payload)
   local state = helpers.ensure_buffer_state(buffers, buf)
   if not state.shell_fifo_path then
-    vim.wait(500, function()
+    local timeout = config.options.timeouts.fifo_ready
+    vim.wait(timeout.limit_ms, function()
       return state.shell_fifo_path ~= nil
-    end, 5)
+    end, timeout.interval_ms)
   end
   send_fifo_frame(buf, action, payload)
   state.shell_integration.after_send_action(buf, state)
@@ -135,18 +137,19 @@ function M.read_command(buf, timeout_ms)
   local state = helpers.ensure_buffer_state(buffers, buf)
   state.shell_query_pending = true
   send_shell_action(buf, "query", "")
-  local received = vim.wait(timeout_ms or 500, function()
+  local timeout = config.options.timeouts.read_command
+  local received = vim.wait(timeout_ms or timeout.limit_ms, function()
     return state.shell_query_pending == false
-  end, 5)
+  end, timeout.interval_ms)
   if not received then
     error("termio: shell command query timed out")
   end
   -- TODO: remove this manual wait and wait for terminal render/query consistency.
   -- FIFO query replies can arrive before Neovim has processed shell redraw bytes
   -- from the terminal PTY. Let the channel drain before callers read screen text.
-  vim.wait(20, function()
+  vim.wait(config.options.waits.read_render_drain_ms, function()
     return false
-  end, 20)
+  end, config.options.waits.read_render_drain_ms)
   return state.shell_state.command
 end
 
@@ -163,9 +166,10 @@ function M.write_command(buf, command, cursor)
   local state = helpers.ensure_buffer_state(buffers, buf)
   state.shell_write_pending = true
   send_shell_action(buf, "write", tostring(cursor) .. "\t" .. escape_fifo_payload(command))
-  local applied = vim.wait(500, function()
+  local timeout = config.options.timeouts.write_command
+  local applied = vim.wait(timeout.limit_ms, function()
     return state.shell_write_pending == false
-  end, 5)
+  end, timeout.interval_ms)
   if not applied then
     error("termio: shell command write timed out")
   end
