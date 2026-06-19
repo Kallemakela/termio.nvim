@@ -134,8 +134,8 @@ T["editable edit"]["open stores current shell state"] = function()
   )
 end
 
-T["editable edit"]["open keeps bash cursor at command end"] = function()
-  local buf = Helpers.open_shell(child, "$ ", "bash")
+T["editable edit"]["open keeps cursor at command end"] = function()
+  local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello world")
@@ -147,8 +147,8 @@ T["editable edit"]["open keeps bash cursor at command end"] = function()
   end)
 end
 
-T["editable edit"]["open keeps bash cursor on wrapped command end"] = function()
-  local buf = Helpers.open_shell(child, "$ ", "bash")
+T["editable edit"]["open keeps cursor on wrapped command end"] = function()
+  local buf = Helpers.open_shell(child)
   local command = "echo " .. string.rep("lorem ipsum ", 16)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
@@ -163,8 +163,8 @@ T["editable edit"]["open keeps bash cursor on wrapped command end"] = function()
   MiniTest.expect.equality(child.api.nvim_win_get_cursor(0)[1] > 1, true)
 end
 
-T["editable edit"]["open keeps bash cursor inside command"] = function()
-  local buf = Helpers.open_shell(child, "$ ", "bash")
+T["editable edit"]["open keeps cursor inside command"] = function()
+  local buf = Helpers.open_shell(child)
   child.cmd("startinsert")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello world")
