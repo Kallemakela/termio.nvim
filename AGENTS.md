@@ -1,46 +1,37 @@
 # AGENTS.md
 
-always start with reading `README.md`
+## Code Style
+- Keep changes minimal.
+- Add short comments above non-obvious code.
+- Use specific function and variable names.
+- Triple-check if you could use existing functionality.
 
-## Separation of editor and api
-- it is extremely important to separate the api from the editor. The editor serves mostly as an example editor for users to create their own api integrations.
+## Workflow
+1. Start with a focused failing test when practical.
+2. Run the single test.
+3. Implement minimal changes.
+4. Run the single test, if fail go to 2, else go to 5.
+5. Refactor to the smallest clear implementation.
+6. Run all tests, if fail go to 2, else go to 7.
+7. Cleanup. Remove extra logs, code that is not needed anymore, tests that were made for inspection rather than testing long term desired behaviour.
 
-## Code style
-- Add short comments above non-obvious code steps.
-- Give functions and variables specific names. It should be immediately clear from the name what the function does and how it differs from other functions.
-
-## Implementation Workflow
-1. Implement change with debug logging.
-2. Use the dev harness and verify the output is as expected.
-3. Possibly write an unit test if you are confident that the implemented behaviour is desired in the future and the test won't get in the way in
-4. Iterate on 1-3 until the solution passes.
-5. Refactor to minimal amount of code changes in the package.
-6. Run steps 1-4 with refactored solution.
-7. Run relevant tests.
+### Practices during workflow
+- Add a lot of debug logs around the bug or new feature.
+    - Read them every time after the test.
+- Use the dev harness for setup-sensitive checks.
 
 ## Testing
-
-### Run tests
-`nvim --headless -u "scripts/minimal_init.lua" -c "lua MiniTest.run_file('tests/test_API.lua')" -c qall`
-- Run filtered mini.test cases: `bash ./run_single_test.sh <test-file> <match-string>`
-    - Example: `bash ./run_single_test.sh tests/test_API.lua "starts directly after"`
-    - If you are iterating on a problem, always use this since it keeps debug logs clean.
-    - You should always check debug logs when iterating on a single test.
-- Test debug.log output goes to `./tmp/test.out`.
+- Run filtered tests: `sh ./run_single_test.sh <test-file> <match-string>`
+    - Can be used for running a single test.
+- Run all tests: `make test`
+- Run one file: `nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua MiniTest.run_file('tests/test_dev.lua')" -c qall`
 - Do NOT run multiple test commands at the same time. This causes issues.
 
-### Interactive
-- Use the dev harness to run arbitrary workflows with the correct setup:
-`sh ./dev/run.sh --headless --debug --post-setup 'lua require("termio.util.log").debug("debug", "hello world")' --words 3`
-    - `--headless` switches startup mode.
-    - `--debug` enables plugin debug output through `verbosefile` in `./tmp/dev.out`.
-    - `--post-setup` runs an Ex command string after setup and before quit, like `nvim --headless -c`.
-    - `--auto` sets `editor.open_on_prompt` true.
-
-### Writing tests
-- do not add tests for keybinds or config options
-- `vim.api.nvim_input("ihello<Esc>")` is the best way to simulate key presses
+## Dev Harness
+- Headless smoke: `sh ./dev/run.sh --headless --debug --post-setup 'lua assert(_G.YourPluginName.config.debug == true)'`
+- Interactive session: `sh ./dev/run.sh --debug`
+- Debug output goes to `./tmp/dev.out`.
+- The users debug output goes to the same place. If the user reports something not working, it is a good idea to check if the scenario logs are here.
 
 ## Formatting
-
-- run `stylua .`
+- Run `stylua .`
