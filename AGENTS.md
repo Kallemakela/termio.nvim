@@ -31,6 +31,7 @@
 - Headless smoke: `sh ./dev/run.sh --headless --debug --post-setup 'lua assert(_G.YourPluginName.config.debug == true)'`
 - Interactive session: `sh ./dev/run.sh --debug`
 - Debug output goes to `./tmp/dev.out`.
+- Final terminal state goes to `./tmp/termdump.out`
 - The users debug output goes to the same place. If the user reports something not working, it is a good idea to check if the scenario logs are here.
 
 ## Formatting
