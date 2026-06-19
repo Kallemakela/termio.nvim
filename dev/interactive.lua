@@ -2,6 +2,7 @@ local root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":p:h:h")
 local config = dofile(root .. "/dev/config.lua")
 local editable_zone = dofile(root .. "/dev/editable_zone.lua")
 local scenario = dofile(root .. "/dev/setup_debug_scenario.lua")
+local snapshot = dofile(root .. "/dev/snapshot.lua")
 local status_window = dofile(root .. "/dev/status_window.lua")
 
 local long_lorem = table.concat({
@@ -57,6 +58,11 @@ scenario.setup({
       end,
     },
     { "n", "<leader>bk", "<Cmd>bdelete!<CR>" },
+    {
+      "n",
+      "<leader>i",
+      snapshot.write,
+    },
     {
       "n",
       "<leader>l",
