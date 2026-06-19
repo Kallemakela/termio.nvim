@@ -196,7 +196,7 @@ Helpers.setup_child = function(child, setup)
   child.setup()
   child.lua(string.format(
     [[
-      require("termio").setup(vim.tbl_deep_extend("force", %s, {
+      require("termio").setup(vim.tbl_deep_extend("force", {
         debug = true,
         -- TODO: Inspect why headless test shells need much larger FIFO roundtrip timeouts.
         timeouts = {
@@ -204,7 +204,7 @@ Helpers.setup_child = function(child, setup)
           read_command = { limit_ms = 500, interval_ms = 10 },
           write_command = { limit_ms = 500, interval_ms = 10 },
         },
-      }))
+      }, %s))
     ]],
     setup or "{ editor = { type = nil } }"
   ))
