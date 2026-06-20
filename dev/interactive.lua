@@ -40,45 +40,26 @@ scenario.setup({
       end,
     })
   end,
-  keymaps = {
-    { "n", "<leader>g", "<Cmd>TermioReadCommand<CR>" },
-    { "n", "<leader>s", "<Cmd>TermioWriteCommand<CR>" },
-    {
-      "n",
-      "<leader>w",
-      write_long_lorem_with_zle,
-    },
-    { { "n", "v", "x" }, "K", "{" },
-    { { "n", "v", "x" }, "J", "}" },
-    {
-      "n",
-      "<leader>e",
-      function()
-        editable_zone.show()
-      end,
-    },
-    { "n", "<leader>bk", "<Cmd>bdelete!<CR>" },
-    {
-      "n",
-      "<leader>i",
-      snapshot.write,
-    },
-    {
-      "n",
-      "<leader>l",
-      function()
-        vim.cmd.edit(vim.fn.fnameescape(vim.o.verbosefile))
-      end,
-    },
-    {
-      "n",
-      "<leader>o",
-      function()
-        vim.cmd.edit(vim.fn.fnameescape(vim.fn.getcwd() .. "/tmp/termdump.out"))
-      end,
-    },
-  },
 })
 
+vim.keymap.set("n", "<leader>g", "<Cmd>TermioReadCommand<CR>")
+vim.keymap.set("n", "<leader>s", "<Cmd>TermioWriteCommand<CR>")
+vim.keymap.set("n", "<leader>w", write_long_lorem_with_zle)
+vim.keymap.set({ "n", "v", "x" }, "K", "{")
+vim.keymap.set({ "n", "v", "x" }, "J", "}")
+vim.keymap.set("n", "<leader>e", function()
+  editable_zone.show()
+end)
+vim.keymap.set("n", "<leader>bk", "<Cmd>bdelete!<CR>")
+vim.keymap.set("n", "<leader>i", snapshot.write)
+vim.keymap.set("n", "<leader>l", function()
+  vim.cmd.edit(vim.fn.fnameescape(vim.o.verbosefile))
+end)
+vim.keymap.set("n", "<leader>o", function()
+  vim.cmd.edit(vim.fn.fnameescape(vim.fn.getcwd() .. "/tmp/termdump.out"))
+end)
+
 scenario.open_terminal()
+vim.keymap.set({ "n", "x" }, "[[", "[[W", { buffer = scenario.terminal_buf, remap = true })
+vim.keymap.set({ "n", "x" }, "]]", "]]W", { buffer = scenario.terminal_buf, remap = true })
 status_window.setup()

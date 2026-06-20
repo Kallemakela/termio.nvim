@@ -149,6 +149,15 @@ require("blink.cmp").setup({
 })
 ```
 
+## Tips
+
+Map shell prompt jumps to skip the prompt marker line:
+
+```lua
+vim.keymap.set({ "n", "x" }, "[[", "[[W", { buffer = true, remap = true })
+vim.keymap.set({ "n", "x" }, "]]", "]]W", { buffer = true, remap = true })
+```
+
 ## [Known issues/Planned features/Roadmap/TODO](./doc/todo.md)
 
 ## [Related projects](./doc/related-projects.md)
