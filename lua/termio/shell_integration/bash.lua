@@ -1,5 +1,4 @@
 local log = require("termio.util.log")
-local config = require("termio.config")
 
 local M = { kind = "bash" }
 
@@ -17,8 +16,6 @@ function M.after_send_action(buf, state)
     error("termio: missing terminal channel for bash wake")
   end
   vim.api.nvim_chan_send(channel, "\24\20")
-  -- TODO: remove this manual wait and wait for command to render
-  vim.wait(config.options.waits.bash_wake_render_ms)
   log.debug("shell wake", { buf = buf, shell = state.shell_kind })
 end
 

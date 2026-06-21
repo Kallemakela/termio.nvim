@@ -9,16 +9,16 @@ M.defaults = {
     read_command = { limit_ms = 50, interval_ms = 2 },
     -- Poll for a shell write acknowledgement before write_command() fails.
     write_command = { limit_ms = 50, interval_ms = 2 },
+    -- Poll for terminal buffer render to catch up to shell query result.
+    render_command = { limit_ms = 50, interval_ms = 2 },
+    -- Poll for :stopinsert to finish leaving terminal mode.
+    terminal_leave = { limit_ms = 10, interval_ms = 1 },
   },
   waits = {
-    -- Let terminal PTY redraw bytes drain after a query reply.
-    read_render_drain_ms = 20,
     -- Ignore redraw-triggered TextChanged briefly after writing to the shell.
     -- This was needed when text write was done via nvim_chan_send, which could trigger
     -- the written text as user input. Might not be needed anymore.
     editable_write_guard_ms = 0,
-    -- Let bash render the command after waking readline.
-    bash_wake_render_ms = 30,
   },
   editor = {
     type = "editable",

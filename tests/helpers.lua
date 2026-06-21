@@ -78,6 +78,20 @@ Helpers.expect.no_match = MiniTest.new_expectation("no string matching", functio
   return str:find(pattern) == nil
 end, error_message)
 
+---Return a deterministic shell command with exactly `len` bytes.
+---@param len integer total command length, including the `echo ` prefix
+---@return string
+Helpers.lorem_command = function(len)
+  local prefix = "echo "
+  local words =
+    "lorem ipsum dolor sit amet consectetur adipiscing elit sed do eiusmod tempor incididunt ut labore et dolore magna aliqua "
+  local text = ""
+  while #prefix + #text < len do
+    text = text .. words
+  end
+  return (prefix .. text):sub(1, len)
+end
+
 -- Monkey-patch `MiniTest.new_child_neovim` with helpful wrappers
 Helpers.new_child_neovim = function()
   local child = MiniTest.new_child_neovim()
@@ -194,6 +208,7 @@ end
 
 Helpers.setup_child = function(child, setup)
   child.setup()
+  Helpers.reset_test_state(child)
   child.lua(string.format(
     [[
       require("termio").setup(vim.tbl_deep_extend("force", {
@@ -210,6 +225,15 @@ Helpers.setup_child = function(child, setup)
   ))
 end
 
+Helpers.reset_test_state = function(child)
+  child.lua([[
+    for _, buf in ipairs(vim.api.nvim_list_bufs()) do
+      vim.b[buf].term_tui_active = nil
+    end
+    vim.cmd("messages clear")
+  ]])
+end
+
 Helpers.wait_until = function(child, check, timeout)
   local deadline = vim.uv.now() + (timeout or 5000)
   while vim.uv.now() < deadline do
@@ -222,8 +246,33 @@ Helpers.wait_until = function(child, check, timeout)
 end
 
 Helpers.wait_for_mode = function(child, mode, timeout)
+  local got
+  local ok = pcall(function()
+    Helpers.wait_until(child, function()
+      got = child.lua_get("vim.api.nvim_get_mode().mode")
+      return got == mode
+    end, timeout)
+  end)
+  if ok then
+    return
+  end
+  local details = child.lua_get([[
+    (function()
+    local buf = vim.api.nvim_get_current_buf()
+    return {
+      buftype = vim.bo[buf].buftype,
+      name = vim.api.nvim_buf_get_name(buf),
+      line = vim.api.nvim_get_current_line(),
+      terminal_job_id = vim.b[buf].terminal_job_id,
+    }
+    end)()
+  ]])
+  error(string.format("expected mode %q, got %q: %s", mode, got or "<nil>", vim.inspect(details)))
+end
+
+Helpers.wait_for_shell_integration = function(child, buf, timeout)
   Helpers.wait_until(child, function()
-    return child.lua_get("vim.api.nvim_get_mode().mode") == mode
+    return child.lua_get([[require("termio.api").buffers[...].shell_fifo_path ~= nil]], { buf })
   end, timeout)
 end
 
@@ -271,6 +320,14 @@ Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
       read_error or "no read error"
     )
   )
+end
+
+Helpers.open_editable_normal_mode = function(child, buf, timeout)
+  child.api.nvim_input("<Esc>")
+  Helpers.wait_for_mode(child, "nt", timeout)
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_option_value("modifiable", { buf = buf })
+  end, timeout)
 end
 
 Helpers.wait_for_shell_output = function(child, buf, expected, timeout)
@@ -327,6 +384,7 @@ Helpers.open_shell = function(child, prompt, shell)
   Helpers.wait_until(child, function()
     return child.api.nvim_get_current_line():match("^" .. vim.pesc(prompt) .. "%s*$") ~= nil
   end)
+  Helpers.wait_for_shell_integration(child, buf)
   return buf
 end
 

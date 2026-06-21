@@ -41,6 +41,31 @@ local function read_editor_state(buf, win)
   }
 end
 
+local function is_command_rendered(buf, command)
+  return M.buffers[buf].promt_cursor and M.read_command_from_buffer(buf) == command
+end
+
+---Wait for editable text to match shell state after query/write markers.
+---Bash readline redraw can arrive after the marker that updates shell state.
+---@param buf integer
+---@param command? string
+local function wait_until_command_is_rendered(buf, command)
+  if not command or is_command_rendered(buf, command) then
+    return
+  end
+  local timeout = config.options.timeouts.render_command
+  vim.wait(timeout.limit_ms, function()
+    return is_command_rendered(buf, command)
+  end, timeout.interval_ms)
+end
+
+local function wait_for_terminal_leave(buf)
+  local timeout = config.options.timeouts.terminal_leave
+  vim.wait(timeout.limit_ms, function()
+    return vim.api.nvim_get_mode().mode ~= "t"
+  end, timeout.interval_ms)
+end
+
 ---Return the buffer cursor where the editable command text ends.
 ---Terminal buffers may contain blank/padded cells after the prompt line. This
 ---walks forward exactly `#read_command()` bytes from `prompt_cursor`, so the
@@ -108,6 +133,26 @@ function M.get_editable_zone(buf)
   }
 end
 
+---Normalize Vim's cursor form for a command ending at the terminal wrap edge.
+---After linewise operators Vim may place the cursor at `{end_row + 1, 0}`.
+---For an editable command ending exactly at `{end_row, #line}`, that is the same
+---visual position as command end and must stay inside the editable zone.
+---@param buf integer
+---@param cursor integer[] 1-based row, 0-based column
+---@param zone? { start_row: integer, start_col: integer, end_row: integer, end_col: integer }
+---@return integer[] cursor
+local function canonicalize_cursor_at_wrapped_command_end(buf, cursor, zone)
+  zone = zone or M.get_editable_zone(buf)
+  if not zone or cursor[2] ~= 0 or cursor[1] ~= zone.end_row + 1 then
+    return cursor
+  end
+  local end_line = vim.api.nvim_buf_get_lines(buf, zone.end_row - 1, zone.end_row, false)[1] or ""
+  if zone.end_col == #end_line then
+    return { zone.end_row, zone.end_col }
+  end
+  return cursor
+end
+
 ---Check if the current cursor is inside the editable command zone.
 ---@param buf? integer
 ---@param cursor? integer[]
@@ -117,7 +162,9 @@ function M.is_cursor_in_editable_zone(buf, cursor)
   if not zone then
     return false
   end
-  local row, col = unpack(cursor or vim.api.nvim_win_get_cursor(0))
+  local row, col = unpack(
+    canonicalize_cursor_at_wrapped_command_end(buf, cursor or vim.api.nvim_win_get_cursor(0), zone)
+  )
   if row < zone.start_row or row > zone.end_row then
     return false
   end
@@ -188,7 +235,12 @@ end
 ---Refresh editable state from the current cursor position.
 ---@param buf integer
 ---@param cursor integer[]
-local function refresh_editable_state(buf, cursor)
+---@param win? integer
+local function refresh_editable_state(buf, cursor, win)
+  win = win or 0
+  local current_cursor = vim.api.nvim_win_get_cursor(win)
+  cursor = canonicalize_cursor_at_wrapped_command_end(buf, cursor)
+  move_cursor_if_needed(win, current_cursor, cursor)
   vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
   if vim.bo[buf].modifiable then
     M.buffers[buf].last_editable_cursor = vim.deepcopy(cursor)
@@ -231,6 +283,7 @@ function M.write(buf, target)
     or (cursor ~= nil and shell_state.cursor ~= cursor)
   if did_sync then
     api.write_command(command, buf, cursor)
+    wait_until_command_is_rendered(buf, command)
   end
   log.debug("editable.write.done", { buf = buf, did_sync = did_sync })
   return did_sync
@@ -445,10 +498,12 @@ function M.open(ctx)
   api.read_command(buf)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   vim.cmd("stopinsert")
+  wait_for_terminal_leave(buf)
+  wait_until_command_is_rendered(buf, buffer_state.shell_state.command)
   vim.schedule(function()
     local cursor = vim.api.nvim_win_get_cursor(win)
-    cursor = move_cursor_back_to_editable_zone(buf, cursor, win)
-    refresh_editable_state(buf, cursor)
+    cursor = move_cursor_back_to_editable_zone(buf, cursor, win, buffer_state.shell_state.cursor)
+    refresh_editable_state(buf, cursor, win)
   end)
   return true
 end

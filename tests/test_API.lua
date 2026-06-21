@@ -24,7 +24,8 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
     state.prompt_end_cursor = { 1, #prompt }]],
     { buf, prompt }
   )
-  child.cmd("startinsert")
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo hello")
   Helpers.wait_for_read_command(child, buf, "echo hello")
 
@@ -38,7 +39,7 @@ T["write_command()"] = MiniTest.new_set()
 
 T["write_command()"]["empty command after cursor stays empty"] = function()
   local buf = Helpers.open_shell(child)
-  child.cmd("startinsert")
+  child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   child.lua([[require("termio").write_command("", ..., 1)]], { buf })
   Helpers.wait_for_read_command(child, buf, "")

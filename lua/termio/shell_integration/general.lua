@@ -165,6 +165,8 @@ function M.handle_term_request(args)
     return
   end
   if args.data.sequence:match("^\27]633;W") then
+    -- Write ack: the shell accepted the command buffer update. This is not a
+    -- terminal-render marker; bash can still redraw after emitting it.
     state.shell_write_pending = false
   end
 end
@@ -186,12 +188,6 @@ function M.read_command(buf, timeout_ms)
   if not received then
     error("termio: shell command query timed out")
   end
-  -- TODO: remove this manual wait and wait for terminal render/query consistency.
-  -- FIFO query replies can arrive before Neovim has processed shell redraw bytes
-  -- from the terminal PTY. Let the channel drain before callers read screen text.
-  vim.wait(config.options.waits.read_render_drain_ms, function()
-    return false
-  end, config.options.waits.read_render_drain_ms)
   return state.shell_state.command
 end
 
