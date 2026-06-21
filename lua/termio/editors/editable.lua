@@ -5,9 +5,11 @@ local log = require("termio.util.log")
 local state = require("termio.state")
 local M = {}
 local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
+local YANK_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_yank_operator"
 -- `g@` calls operatorfunc after the keymap returns, so keep the selected
 -- after-delete behavior in an upvalue until `apply_delete_operator()` runs.
 local pending_after_delete_operator
+local pending_after_yank_cursor
 
 local function build_context(ctx)
   ctx = ctx or {}
@@ -465,6 +467,22 @@ function M.apply_delete_operator(motion_type)
   after_delete(buf, offset)
 end
 
+function M.apply_yank_operator()
+  local buf = vim.api.nvim_get_current_buf()
+  local command = M.read_command_from_buffer(buf)
+  local start_offset = command_offset_at_operator_start(buf)
+  -- `]` points at the last included byte; convert it to an exclusive end.
+  local end_offset = get_shell_cursor_offset(buf, vim.api.nvim_buf_get_mark(buf, "]")) + 1
+  if end_offset < start_offset then
+    start_offset, end_offset = end_offset, start_offset
+  end
+  vim.fn.setreg(vim.v.register, command:sub(start_offset + 1, math.min(end_offset, #command)), "V")
+  if pending_after_yank_cursor then
+    vim.api.nvim_win_set_cursor(0, pending_after_yank_cursor)
+    pending_after_yank_cursor = nil
+  end
+end
+
 local function start_delete_operator(after_delete)
   -- `g@` lets Vim collect the motion range before `apply_delete_operator()`
   -- handles shared delete-side effects and the key-specific follow-up.
@@ -475,6 +493,12 @@ end
 
 local function start_change_operator()
   return start_delete_operator(enter_insert_at_command_offset)
+end
+
+local function start_yank_operator()
+  pending_after_yank_cursor = vim.api.nvim_win_get_cursor(0)
+  vim.go.operatorfunc = YANK_OPERATOR_FUNC
+  return "g@"
 end
 
 ---Handle terminal text changes with the concurrent-write guard.
@@ -678,6 +702,15 @@ end
 -- Start Vim's operator flow for normal-mode delete/change commands.
 local function apply_normal_operator_keymaps(buf)
   local normal_operators = {
+    dd = {
+      start = function()
+        return "0d$"
+      end,
+      motion = function()
+        return ""
+      end,
+      remap = true,
+    },
     d = {
       start = start_delete_operator,
       motion = function()
@@ -709,6 +742,15 @@ local function apply_normal_operator_keymaps(buf)
       motion = function()
         return vim.v.count1 .. "l"
       end,
+    },
+    yy = {
+      start = function()
+        return "0" .. start_yank_operator() .. "$"
+      end,
+      motion = function()
+        return ""
+      end,
+      remap = true,
     },
   }
   for lhs, operator in pairs(normal_operators) do
