@@ -41,8 +41,18 @@ local function read_editor_state(buf, win)
   }
 end
 
+local function is_prompt_rendered(buf)
+  local prompt_cursor = M.buffers[buf].promt_cursor
+  if not prompt_cursor then
+    return false
+  end
+  local line = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, prompt_cursor[1], false)[1]
+    or ""
+  return #line >= prompt_cursor[2]
+end
+
 local function is_command_rendered(buf, command)
-  return M.buffers[buf].promt_cursor and M.read_command_from_buffer(buf) == command
+  return is_prompt_rendered(buf) and M.read_command_from_buffer(buf) == command
 end
 
 ---Wait for editable text to match shell state after query/write markers.
