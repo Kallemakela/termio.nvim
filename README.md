@@ -19,22 +19,34 @@ It is easy to add support for other shells as well if needed.
 
 ### Shell
 
-In zsh startup, e.g. in `~/.zshrc`:
+<details>
+<summary>Zsh</summary>
+
+Load [zsh integration script](./shell/termio.zsh) on startup, e.g. in `~/.zshrc`:
+
 ```zsh
 if [ -n "$NVIM" ]; then
   source "$HOME/code/nvim/termio.nvim/shell/termio.zsh"
 fi
 ```
 
+</details>
+
 > [!NOTE]
 > `termio.nvim` does not auto-load shell integration because it is complex and insecure.
 
-In bash startup, e.g. in `~/.bashrc`:
+<details>
+<summary>Bash</summary>
+
+Load [bash integration script](./shell/termio.bash) on startup, e.g. in `~/.bashrc`:
+
 ```bash
 if [ -n "$NVIM" ]; then
   source "$HOME/code/nvim/termio.nvim/shell/termio.bash"
 fi
 ```
+
+</details>
 
 Check if all markers are visible to Neovim:
 
@@ -55,7 +67,6 @@ vim.pack.add({ "https://github.com/Kallemakela/termio.nvim" })
 
 <details>
 <summary>With <a href="https://github.com/folke/lazy.nvim">lazy.nvim</a></summary>
-</details>
 
 ```lua
 {
@@ -63,6 +74,8 @@ vim.pack.add({ "https://github.com/Kallemakela/termio.nvim" })
   opts = {},
 }
 ```
+
+</details>
 
 Or just on startup:
 ```lua
