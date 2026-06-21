@@ -82,7 +82,7 @@ require("termio").setup({
     open = "<Esc>",
     is_disabled = function(buf)
       -- Example, assuming you track if TUI active in terminal
-      -- See `./doc/tui-detection.md` for tracking alt-screen/TUI state.
+      -- See `./docs/tui-detection.md` for tracking alt-screen/TUI state.
       -- return vim.b[buf].term_tui_active
       return false
     end,
@@ -164,10 +164,10 @@ vim.keymap.set({ "n", "x" }, "[[", "[[W", { buffer = true, remap = true })
 vim.keymap.set({ "n", "x" }, "]]", "]]W", { buffer = true, remap = true })
 ```
 
-## [Known issues/Planned features/Roadmap/TODO](./doc/todo.md)
+## [Known issues/Planned features/Roadmap/TODO](./docs/todo.md)
 
-## [Contributing](./doc/contributing.md)
+## [Contributing](./docs/contributing.md)
 
-## [Development](./doc/development.md)
+## [Development](./docs/development.md)
 
-## [Related projects](./doc/related-projects.md)
+## [Related projects](./docs/related-projects.md)
