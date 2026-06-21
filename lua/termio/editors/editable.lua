@@ -414,6 +414,23 @@ local function keep_cursor_at_command_offset(buf, offset)
   move_cursor_back_to_editable_zone(buf, cursor)
 end
 
+local function command_end_offset(buf)
+  return #M.read_command_from_buffer(buf)
+end
+
+local function command_end_operator_motion(buf)
+  local cursor = get_buffer_location_from_shell_offset(buf, command_end_offset(buf))
+  -- `g@` needs a real motion range. Jumping to a temporary mark gives Vim that
+  -- range; `v` forces charwise selection so multi-row wrapped commands are not
+  -- treated as linewise deletions.
+  vim.api.nvim_buf_set_mark(buf, "z", cursor[1], cursor[2], {})
+  return "v`z"
+end
+
+local function move_to_command_end(buf)
+  keep_cursor_at_command_offset(buf, math.max(command_end_offset(buf) - 1, 0))
+end
+
 ---Sync the deleted draft to the shell and continue in terminal insert mode.
 ---@param buf integer
 ---@param offset integer command offset where insert mode should continue
@@ -622,30 +639,65 @@ local function apply_normal_edit_keymaps(buf)
   end
 end
 
--- Use Vim's operator flow for motion-based delete/change commands.
-local function apply_operator_keymaps(buf)
-  -- `d` waits for a motion and then syncs the deleted draft without entering insert.
-  set_termio_keymap("n", "d", "editable.key.d", buf, function()
-    log_editable_key("editable.key.d", buf)
-    return start_delete_operator()
-  end, { expr = true })
+local function apply_normal_motion_keymaps(buf)
+  set_termio_keymap("n", "$", "editable.key.$", buf, function()
+    log_editable_key("editable.key.$", buf)
+    move_to_command_end(buf)
+  end)
+end
 
-  -- These suffixes complete the `g@` operator returned by start_change_operator().
-  -- `c` waits for the next motion, while `s` and `C` provide their own motion.
-  local normal_change_motions = {
-    c = "",
-    s = function()
-      return vim.v.count1 .. "l"
-    end,
-    C = "$",
+local function apply_operator_pending_motion_keymaps(buf)
+  set_termio_keymap("o", "$", "editable.key.operator_$", buf, function()
+    log_editable_key("editable.key.operator_$", buf)
+    return command_end_operator_motion(buf)
+  end, { expr = true })
+end
+
+-- Start Vim's operator flow for normal-mode delete/change commands.
+local function apply_normal_operator_keymaps(buf)
+  local normal_operators = {
+    d = {
+      start = start_delete_operator,
+      motion = function()
+        return ""
+      end,
+    },
+    D = {
+      start = start_delete_operator,
+      motion = function()
+        return "$"
+      end,
+      remap = true,
+    },
+    c = {
+      start = start_change_operator,
+      motion = function()
+        return ""
+      end,
+    },
+    C = {
+      start = start_change_operator,
+      motion = function()
+        return "$"
+      end,
+      remap = true,
+    },
+    s = {
+      start = start_change_operator,
+      motion = function()
+        return vim.v.count1 .. "l"
+      end,
+    },
   }
-  for lhs, suffix in pairs(normal_change_motions) do
+  for lhs, operator in pairs(normal_operators) do
     set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
       log_editable_key("editable.key." .. lhs, buf)
-      return start_change_operator() .. (type(suffix) == "function" and suffix() or suffix)
-    end, { expr = true })
+      return operator.start() .. operator.motion()
+    end, { expr = true, remap = operator.remap })
   end
+end
 
+local function apply_visual_operator_keymaps(buf)
   -- Visual mode already has a selected range, so no extra motion suffix is needed.
   for _, lhs in ipairs({ "c", "s" }) do
     set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
@@ -669,7 +721,10 @@ end
 local function apply_editable_keymaps(buf)
   apply_insert_keymaps(buf)
   apply_normal_edit_keymaps(buf)
-  apply_operator_keymaps(buf)
+  apply_normal_motion_keymaps(buf)
+  apply_operator_pending_motion_keymaps(buf)
+  apply_normal_operator_keymaps(buf)
+  apply_visual_operator_keymaps(buf)
   apply_visual_paste_keymaps(buf)
 end
 
