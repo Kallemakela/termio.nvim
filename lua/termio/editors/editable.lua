@@ -570,6 +570,109 @@ local function apply_keymaps(buf)
   end
 end
 
+local function log_editable_key(event, buf)
+  log.debug(event, { buf = buf, cursor = vim.api.nvim_win_get_cursor(0) })
+end
+
+-- Enter terminal insert mode at Vim-like insertion targets.
+local function apply_insert_keymaps(buf)
+  local insert_targets = {
+    A = {
+      cursor = function(current)
+        return #current.command
+      end,
+    },
+    I = { cursor = 0 },
+    i = false,
+    a = {
+      cursor = function(current)
+        return current.cursor + 1
+      end,
+    },
+  }
+  for lhs, target in pairs(insert_targets) do
+    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+      log_editable_key("editable.key." .. lhs, buf)
+      enter_insert_with_target(buf, target or nil)
+    end)
+  end
+end
+
+-- Apply immediate normal-mode edits that do not need a motion.
+local function apply_normal_edit_keymaps(buf)
+  local normal_edits = {
+    x = function()
+      mark_unsynced_edit(buf)
+      vim.cmd("normal! x")
+    end,
+    p = function()
+      mark_unsynced_edit(buf)
+      paste_register_into_editable_buffer(true)
+    end,
+    P = function()
+      mark_unsynced_edit(buf)
+      paste_register_into_editable_buffer(false)
+    end,
+  }
+  for lhs, action in pairs(normal_edits) do
+    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+      log_editable_key("editable.key." .. lhs, buf)
+      action()
+    end)
+  end
+end
+
+-- Use Vim's operator flow for motion-based delete/change commands.
+local function apply_operator_keymaps(buf)
+  -- `d` waits for a motion and then syncs the deleted draft without entering insert.
+  set_termio_keymap("n", "d", "editable.key.d", buf, function()
+    log_editable_key("editable.key.d", buf)
+    return start_delete_operator()
+  end, { expr = true })
+
+  -- These suffixes complete the `g@` operator returned by start_change_operator().
+  -- `c` waits for the next motion, while `s` and `C` provide their own motion.
+  local normal_change_motions = {
+    c = "",
+    s = function()
+      return vim.v.count1 .. "l"
+    end,
+    C = "$",
+  }
+  for lhs, suffix in pairs(normal_change_motions) do
+    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+      log_editable_key("editable.key." .. lhs, buf)
+      return start_change_operator() .. (type(suffix) == "function" and suffix() or suffix)
+    end, { expr = true })
+  end
+
+  -- Visual mode already has a selected range, so no extra motion suffix is needed.
+  for _, lhs in ipairs({ "c", "s" }) do
+    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+      log_editable_key("editable.key.visual_" .. lhs, buf)
+      return start_change_operator()
+    end, { expr = true })
+  end
+end
+
+-- Replace a visual selection with the selected paste register.
+local function apply_visual_paste_keymaps(buf)
+  local visual_pastes = { p = true, P = false }
+  for lhs, after in pairs(visual_pastes) do
+    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+      log_editable_key("editable.key.visual_" .. lhs, buf)
+      paste_register_over_visual_selection(after)
+    end)
+  end
+end
+
+local function apply_editable_keymaps(buf)
+  apply_insert_keymaps(buf)
+  apply_normal_edit_keymaps(buf)
+  apply_operator_keymaps(buf)
+  apply_visual_paste_keymaps(buf)
+end
+
 ---@class EditableTermConfig
 ---@field promts? table<string, true>
 
@@ -591,89 +694,7 @@ M.setup = function(config)
       apply_keymaps(args.buf)
       local editgroup =
         vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
-      set_termio_keymap("n", "A", "editable.key.A", args.buf, function()
-        log.debug("editable.key.A", { buf = args.buf })
-        enter_insert_with_target(args.buf, {
-          cursor = function(current)
-            return #current.command
-          end,
-        })
-      end)
-      set_termio_keymap("n", "I", "editable.key.I", args.buf, function()
-        log.debug("editable.key.I", { buf = args.buf })
-        enter_insert_with_target(args.buf, { cursor = 0 })
-      end)
-      set_termio_keymap("n", "i", "editable.key.i", args.buf, function()
-        log.debug("editable.key.i", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        enter_insert_with_target(args.buf)
-      end)
-      set_termio_keymap("n", "a", "editable.key.a", args.buf, function()
-        log.debug("editable.key.a", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        enter_insert_with_target(args.buf, {
-          cursor = function(current)
-            return current.cursor + 1
-          end,
-        })
-      end)
-      set_termio_keymap("n", "x", "editable.key.x", args.buf, function()
-        log.debug("editable.key.x", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        mark_unsynced_edit(args.buf)
-        vim.cmd("normal! x")
-      end)
-      set_termio_keymap("n", "p", "editable.key.p", args.buf, function()
-        log.debug("editable.key.p", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        mark_unsynced_edit(args.buf)
-        paste_register_into_editable_buffer(true)
-      end)
-      set_termio_keymap("n", "P", "editable.key.P", args.buf, function()
-        log.debug("editable.key.P", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        mark_unsynced_edit(args.buf)
-        paste_register_into_editable_buffer(false)
-      end)
-      set_termio_keymap("n", "d", "editable.key.d", args.buf, function()
-        log.debug("editable.key.d", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        return start_delete_operator()
-      end, { expr = true })
-      set_termio_keymap("n", "c", "editable.key.c", args.buf, function()
-        log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        return start_change_operator()
-      end, { expr = true })
-      set_termio_keymap("n", "s", "editable.key.s", args.buf, function()
-        log.debug("editable.key.s", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        return start_change_operator() .. vim.v.count1 .. "l"
-      end, { expr = true })
-      set_termio_keymap("n", "C", "editable.key.C", args.buf, function()
-        log.debug("editable.key.C", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        return start_change_operator() .. "$"
-      end, { expr = true })
-      set_termio_keymap("x", "c", "editable.key.visual_c", args.buf, function()
-        log.debug(
-          "editable.key.visual_c",
-          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
-        )
-        return start_change_operator()
-      end, { expr = true })
-      set_termio_keymap("x", "s", "editable.key.visual_s", args.buf, function()
-        log.debug(
-          "editable.key.visual_s",
-          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
-        )
-        return start_change_operator()
-      end, { expr = true })
-      set_termio_keymap("x", "p", "editable.key.visual_p", args.buf, function()
-        log.debug(
-          "editable.key.visual_p",
-          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
-        )
-        paste_register_over_visual_selection(true)
-      end)
-      set_termio_keymap("x", "P", "editable.key.visual_P", args.buf, function()
-        log.debug(
-          "editable.key.visual_P",
-          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
-        )
-        paste_register_over_visual_selection(false)
-      end)
+      apply_editable_keymaps(args.buf)
       vim.api.nvim_create_autocmd("TextChanged", {
         buffer = args.buf,
         group = editgroup,
