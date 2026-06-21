@@ -242,6 +242,30 @@ T["editable edit"]["bbce text change keeps editor draft"] = function()
   Helpers.wait_for_editable_command(child, buf, "echo googbye world")
 end
 
+T["editable edit"]["s substitutes character and enters terminal insert"] = function()
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo test")
+  Helpers.wait_for_read_command(child, buf, "echo test")
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("FesX")
+  Helpers.wait_for_mode(child, "t")
+  Helpers.wait_for_read_command(child, buf, "echo tXst")
+end
+
+T["editable edit"]["visual s changes selection"] = function()
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello world")
+  Helpers.wait_for_read_command(child, buf, "echo hello world")
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("bbvesgoodbye")
+  Helpers.wait_for_mode(child, "t")
+  Helpers.wait_for_read_command(child, buf, "echo goodbye world")
+end
+
 T["editable edit"]["bbC changes to command end"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")

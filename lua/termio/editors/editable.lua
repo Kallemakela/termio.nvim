@@ -638,6 +638,10 @@ M.setup = function(config)
         log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         return start_change_operator()
       end, { expr = true })
+      set_termio_keymap("n", "s", "editable.key.s", args.buf, function()
+        log.debug("editable.key.s", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
+        return start_change_operator() .. vim.v.count1 .. "l"
+      end, { expr = true })
       set_termio_keymap("n", "C", "editable.key.C", args.buf, function()
         log.debug("editable.key.C", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         return start_change_operator() .. "$"
@@ -645,6 +649,13 @@ M.setup = function(config)
       set_termio_keymap("x", "c", "editable.key.visual_c", args.buf, function()
         log.debug(
           "editable.key.visual_c",
+          { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
+        )
+        return start_change_operator()
+      end, { expr = true })
+      set_termio_keymap("x", "s", "editable.key.visual_s", args.buf, function()
+        log.debug(
+          "editable.key.visual_s",
           { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) }
         )
         return start_change_operator()
