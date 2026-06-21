@@ -36,6 +36,12 @@ if [ -n "$NVIM" ]; then
 fi
 ```
 
+Check if all markers are visible to Neovim:
+
+```vim
+:checkhealth termio
+```
+
 ### Neovim
 
 <details>
