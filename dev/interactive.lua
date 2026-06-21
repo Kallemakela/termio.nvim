@@ -59,6 +59,16 @@ vim.keymap.set("n", "<leader>o", function()
 end)
 
 scenario.open_terminal()
-vim.keymap.set({ "n", "x" }, "[[", "[[W", { buffer = scenario.terminal_buf, remap = true })
-vim.keymap.set({ "n", "x" }, "]]", "]]W", { buffer = scenario.terminal_buf, remap = true })
+local function extend_prompt_jump(mode, lhs, suffix)
+  local original = vim.fn.maparg(lhs, mode, false, true)
+  vim.keymap.set(mode, lhs, function()
+    original.callback()
+    vim.cmd.normal({ suffix, bang = true })
+  end, { buffer = scenario.terminal_buf })
+end
+
+extend_prompt_jump("n", "[[", "E")
+extend_prompt_jump("x", "[[", "E")
+extend_prompt_jump("n", "]]", "E")
+extend_prompt_jump("x", "]]", "E")
 status_window.setup()

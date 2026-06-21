@@ -2,8 +2,6 @@
 
 ## Bugs
 
-### [[ not working as expected, always goes to first prompt end
-
 ## Features
 
 ### visual selection with modifiable and non-modifiable zone to `d` should d the part inside mod zone still(?)
