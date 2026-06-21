@@ -306,6 +306,78 @@ T["editable edit"]["D deletes to wrapped command end"] = function()
   Helpers.wait_for_editable_command(child, buf, "echo ")
 end
 
+T["editable edit"]["0 moves to wrapped command start"] = function()
+  local buf = Helpers.open_shell(child)
+  local command = Helpers.lorem_command(126)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("[[WW")
+  child.api.nvim_input("0")
+  Helpers.wait_until(child, function()
+    return get_command_cursor(buf) == 0
+  end)
+end
+
+T["editable edit"]["$ moves to wrapped command end"] = function()
+  local buf = Helpers.open_shell(child)
+  local command = Helpers.lorem_command(126)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("[[WW")
+  child.api.nvim_input("$")
+  Helpers.wait_until(child, function()
+    return get_command_cursor(buf) == #command - 1
+  end)
+end
+
+T["editable edit"]["^ moves to wrapped command start"] = function()
+  local buf = Helpers.open_shell(child)
+  local command = Helpers.lorem_command(126)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("[[WW")
+  child.api.nvim_input("^")
+  Helpers.wait_until(child, function()
+    return get_command_cursor(buf) == 0
+  end)
+end
+
+T["editable edit"]["d0 deletes to wrapped command start"] = function()
+  local buf = Helpers.open_shell(child)
+  local command = Helpers.lorem_command(126)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("[[WW")
+  child.api.nvim_input("d0")
+  Helpers.wait_for_editable_command(child, buf, command:sub(6))
+end
+
+T["editable edit"]["c^ changes to wrapped command start"] = function()
+  local buf = Helpers.open_shell(child)
+  local command = Helpers.lorem_command(126)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input(command)
+  Helpers.wait_for_read_command(child, buf, command)
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("[[WW")
+  child.api.nvim_input("c^done")
+  Helpers.wait_for_mode(child, "t")
+  Helpers.wait_for_read_command(child, buf, "done" .. command:sub(6))
+end
+
 T["editable edit"]["bbved deletes visual selection from editor draft"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")

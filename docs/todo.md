@@ -19,8 +19,6 @@
 ### fish support
 - fish has `commandline -f repaint` so should work like zsh
 
-### add config option to make commands like D,C,$ ignore wrap-newlines and go to end of command
-
 ## Chores
 
 update docs to match current zsh only state

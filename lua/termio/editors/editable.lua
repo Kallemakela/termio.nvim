@@ -411,11 +411,18 @@ end
 
 local function keep_cursor_at_command_offset(buf, offset)
   local cursor = get_buffer_location_from_shell_offset(buf, offset)
-  move_cursor_back_to_editable_zone(buf, cursor)
+  local clamped_cursor = clamp_cursor_to_editable_zone(buf, cursor)
+  move_cursor_if_needed(0, vim.api.nvim_win_get_cursor(0), clamped_cursor)
 end
 
 local function command_end_offset(buf)
   return #M.read_command_from_buffer(buf)
+end
+
+local function command_start_operator_motion(buf)
+  local cursor = get_buffer_location_from_shell_offset(buf, 0)
+  vim.api.nvim_buf_set_mark(buf, "z", cursor[1], cursor[2], {})
+  return "`z"
 end
 
 local function command_end_operator_motion(buf)
@@ -425,6 +432,10 @@ local function command_end_operator_motion(buf)
   -- treated as linewise deletions.
   vim.api.nvim_buf_set_mark(buf, "z", cursor[1], cursor[2], {})
   return "v`z"
+end
+
+local function move_to_command_start(buf)
+  keep_cursor_at_command_offset(buf, 0)
 end
 
 local function move_to_command_end(buf)
@@ -640,17 +651,28 @@ local function apply_normal_edit_keymaps(buf)
 end
 
 local function apply_normal_motion_keymaps(buf)
-  set_termio_keymap("n", "$", "editable.key.$", buf, function()
-    log_editable_key("editable.key.$", buf)
-    move_to_command_end(buf)
-  end)
+  local normal_motions =
+    { ["0"] = move_to_command_start, ["^"] = move_to_command_start, ["$"] = move_to_command_end }
+  for lhs, action in pairs(normal_motions) do
+    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+      log_editable_key("editable.key." .. lhs, buf)
+      action(buf)
+    end)
+  end
 end
 
 local function apply_operator_pending_motion_keymaps(buf)
-  set_termio_keymap("o", "$", "editable.key.operator_$", buf, function()
-    log_editable_key("editable.key.operator_$", buf)
-    return command_end_operator_motion(buf)
-  end, { expr = true })
+  local operator_motions = {
+    ["0"] = command_start_operator_motion,
+    ["^"] = command_start_operator_motion,
+    ["$"] = command_end_operator_motion,
+  }
+  for lhs, action in pairs(operator_motions) do
+    set_termio_keymap("o", lhs, "editable.key.operator_" .. lhs, buf, function()
+      log_editable_key("editable.key.operator_" .. lhs, buf)
+      return action(buf)
+    end, { expr = true })
+  end
 end
 
 -- Start Vim's operator flow for normal-mode delete/change commands.
