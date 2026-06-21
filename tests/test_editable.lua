@@ -212,7 +212,7 @@ T["editable edit"]["bbcw updates read_command"] = function()
   child.api.nvim_input("echo hello world")
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   Helpers.open_editable_normal_mode(child, buf)
-  child.api.nvim_input("bbcwgoodbye<Esc>")
+  child.api.nvim_input("bbcegoodbye<Esc>")
   Helpers.wait_for_read_command(child, buf, "echo goodbye world")
 end
 
@@ -275,7 +275,7 @@ T["editable edit"]["bbcw<Esc> updates command"] = function()
   Helpers.wait_for_read_command(child, buf, command)
   Helpers.open_editable_normal_mode(child, buf)
   child.api.nvim_input("bbcw<Esc>")
-  Helpers.wait_for_read_command(child, buf, "echo hello world  friend")
+  Helpers.wait_for_read_command(child, buf, "echo hello world friend")
 end
 
 T["editable edit"]["visual delete from wrapped command keeps last word"] = function()

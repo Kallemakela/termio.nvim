@@ -638,11 +638,6 @@ M.setup = function(config)
         log.debug("editable.key.c", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         return start_change_operator()
       end, { expr = true })
-      set_termio_keymap("n", "cw", "editable.key.cw", args.buf, function()
-        log.debug("editable.key.cw", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
-        -- Vim treats `cw` like `ce`, preserving the following whitespace.
-        return start_change_operator() .. "e"
-      end, { expr = true })
       set_termio_keymap("n", "C", "editable.key.C", args.buf, function()
         log.debug("editable.key.C", { buf = args.buf, cursor = vim.api.nvim_win_get_cursor(0) })
         return start_change_operator() .. "$"
