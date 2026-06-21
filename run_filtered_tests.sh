@@ -2,8 +2,8 @@
 
 set -eu
 
-file=${1:?usage: bash run_single_test.sh <file> <string>}
-match=${2:?usage: bash run_single_test.sh <file> <string>}
+file=${1:?usage: sh run_filtered_tests.sh <file> <string>}
+match=${2:?usage: sh run_filtered_tests.sh <file> <string>}
 
 MINITEST_FILE="$file" MINITEST_MATCH="$match" nvim --headless --noplugin -u "./scripts/minimal_init.lua" -c "lua
 local file = vim.fn.fnamemodify(vim.env.MINITEST_FILE, ':.')

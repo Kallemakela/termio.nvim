@@ -21,7 +21,7 @@
 - Use the dev harness for setup-sensitive checks.
 
 ## Testing
-- Run filtered tests: `sh ./run_single_test.sh <test-file> <match-string>`
+- Run filtered tests: `sh ./run_filtered_tests.sh <test-file> <match-string>`
     - Can be used for running a single test.
 - Run all tests: `make test`
 - Run one file: `nvim --headless --noplugin -u ./scripts/minimal_init.lua -c "lua MiniTest.run_file('tests/test_dev.lua')" -c qall`

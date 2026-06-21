@@ -160,4 +160,8 @@ vim.keymap.set({ "n", "x" }, "]]", "]]W", { buffer = true, remap = true })
 
 ## [Known issues/Planned features/Roadmap/TODO](./doc/todo.md)
 
+## [Contributing](./doc/contributing.md)
+
+## [Development](./doc/development.md)
+
 ## [Related projects](./doc/related-projects.md)
