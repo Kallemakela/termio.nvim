@@ -172,6 +172,41 @@ require("blink.cmp").setup({
 })
 ```
 
+## Project Structure
+
+```text
+termio.nvim/
+├── lua/termio/
+│   ├── init.lua                 setup entrypoint
+│   ├── config.lua               defaults
+│   ├── api.lua                  public read/write API
+│   ├── commands.lua             user commands
+│   ├── health.lua               :checkhealth termio checks
+│   ├── live_terminal_buffer.lua terminal-buffer state tracking
+│   ├── chan_send_api.lua        nvim_chan_send backend
+│   ├── state.lua                plugin state
+│   ├── editors/                 bundled terminal-buffer editors
+│   │   └── editable.lua         default editable-buffer editor
+│   ├── shell_integration/       shell-backed API implementation
+│   │   ├── general.lua          shared shell api
+│   │   ├── zsh.lua              zsh integration
+│   │   ├── bash.lua             bash integration
+│   │   └── fish.lua             fish integration
+│   └── util/                    shared utilities
+│       ├── helpers.lua          small helper functions
+│       └── log.lua              debug logging
+├── shell/                       shell startup scripts
+│   ├── termio.zsh               zsh markers and key hooks
+│   ├── termio.bash              bash markers and key hooks
+│   └── termio.fish              fish markers and key hooks
+├── tests/                       MiniTest tests
+├── dev/                         dev harness
+├── docs/                        notes, setup details, roadmap
+├── scripts/minimal_init.lua     test config
+├── run_filtered_tests.sh        focused test runner
+└── Makefile                     all-test entrypoint
+```
+
 ## [Known issues/Planned features/Roadmap/TODO](./docs/todo.md)
 
 ## [Contributing](./docs/contributing.md)
