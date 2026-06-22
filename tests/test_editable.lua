@@ -89,6 +89,19 @@ T["editable edit"]["disable stops editor open"] = function()
   )
 end
 
+T["editable edit"]["actions are disabled after terminal exits"] = function()
+  local buf = Helpers.open_shell(child)
+  local job = child.lua_get("vim.b[...].terminal_job_id", { buf })
+  child.fn.jobstop(job)
+  Helpers.wait_until(child, function()
+    return child.lua_get([[require("termio.util.helpers").is_editor_disabled(...)]], { buf })
+  end)
+  child.api.nvim_input("<CR>")
+  child.api.nvim_input("<Esc>")
+  child.wait(100)
+  Helpers.expect.no_match(child.cmd_capture("messages"), "closed stream")
+end
+
 T["editable edit"]["normal insert keys do nothing when disabled"] = function()
   Helpers.setup_child(
     child,

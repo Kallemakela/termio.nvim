@@ -1,5 +1,6 @@
 local M = {}
 local config = require("termio.config")
+local log = require("termio.util.log")
 local state = require("termio.state")
 
 ---@param keys string
@@ -18,12 +19,33 @@ local function assert_terminal_channel(buf)
   return chan
 end
 
+---@param buf integer
+---@return boolean
+function M.is_terminal_channel_open(buf)
+  if vim.bo[buf].buftype ~= "terminal" then
+    return false
+  end
+  local chan = vim.bo[buf].channel
+  if not chan or chan == 0 then
+    return false
+  end
+  local ok, info = pcall(vim.api.nvim_get_chan_info, chan)
+  return ok and info.exitcode == -1
+end
+
 ---@param bytes string
 ---@param buf? integer
 function M.send_bytes(bytes, buf)
   local target = M.current_buf(buf)
   M.assert_terminal(target)
-  vim.api.nvim_chan_send(assert_terminal_channel(target), bytes)
+  if not M.is_terminal_channel_open(target) then
+    log.debug("terminal.send.skip_closed", { buf = target })
+    return
+  end
+  local ok, err = pcall(vim.api.nvim_chan_send, assert_terminal_channel(target), bytes)
+  if not ok then
+    log.debug("terminal.send.failed", { buf = target, error = err })
+  end
 end
 
 ---@param keys string
@@ -79,6 +101,9 @@ end
 ---@return boolean
 function M.is_editor_disabled(buf)
   if not state.is_enabled() then
+    return true
+  end
+  if vim.bo[buf].buftype == "terminal" and not M.is_terminal_channel_open(buf) then
     return true
   end
   local is_disabled = config.options.editor.is_disabled
