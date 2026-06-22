@@ -4,6 +4,10 @@ fi
 
 TERMIO_SHELL_INTEGRATION_LOADED=1
 
+# Termio writes via bracketed paste; avoid Readline's active-region highlight.
+bind 'set active-region-start-color ""'
+bind 'set active-region-end-color ""'
+
 # Escape marker payload so separators stay parseable.
 termio_shell_escape() {
   local escaped=${1//\\/\\\\}

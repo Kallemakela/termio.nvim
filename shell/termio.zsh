@@ -6,6 +6,9 @@ fi
 
 TERMIO_SHELL_INTEGRATION_LOADED=1
 
+# Termio writes via bracketed paste; avoid ZLE's pasted-text highlight.
+zle_highlight+=(paste:none)
+
 # Escape marker payload so separators stay parseable.
 termio_shell_escape() {
   local escaped=${1//\\/\\\\}

@@ -4,6 +4,9 @@ end
 
 set -g TERMIO_SHELL_INTEGRATION_LOADED 1
 
+# Termio writes via bracketed paste; avoid fish selection-style paste highlight.
+set -g fish_color_selection normal
+
 function termio_shell_escape --argument-names value
   string replace -a '\\' '\\\\' -- "$value" | string replace -a ';' '\\x3b'
 end
