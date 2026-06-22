@@ -3,6 +3,7 @@ local api = require("termio.api")
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
 local state = require("termio.state")
+local live_terminal_buffer = require("termio.live_terminal_buffer")
 local M = {}
 local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
 local YANK_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_yank_operator"
@@ -31,15 +32,13 @@ end
 ---@return string
 function M.read_command_from_buffer(buf)
   local prompt_cursor = M.buffers[buf].promt_cursor
-  local lines = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, -1, false)
-  lines[1] = (lines[1] or ""):sub(prompt_cursor[2] + 1)
-  return table.concat(lines, "")
+  return live_terminal_buffer.command_text(buf, prompt_cursor)
 end
 
 local function read_editor_state(buf, win)
   return {
     command = M.read_command_from_buffer(buf),
-    cursor = api.command_cursor(win, buf)[2],
+    cursor = live_terminal_buffer.command_cursor(win, buf, M.buffers[buf].promt_cursor)[2],
   }
 end
 
@@ -78,29 +77,6 @@ local function wait_for_terminal_leave(buf)
   end, timeout.interval_ms)
 end
 
----Return the buffer cursor where the editable command text ends.
----Terminal buffers may contain blank/padded cells after the prompt line. This
----walks forward exactly `#read_command()` bytes from `prompt_cursor`, so the
----editable zone ends at command text, not at the terminal buffer edge.
----@param buf integer
----@param prompt_cursor integer[] 0-based column cursor where command starts
----@return integer[] cursor 1-based row, 0-based column
-local function get_command_end_location_in_buffer(buf, prompt_cursor)
-  local row, col = unpack(prompt_cursor)
-  local remaining = #M.read_command_from_buffer(buf)
-  while remaining > 0 and row <= vim.api.nvim_buf_line_count(buf) do
-    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
-    local line_start = row == prompt_cursor[1] and col or 0
-    local line_remaining = math.max(#line - line_start, 0)
-    if remaining <= line_remaining then
-      return { row, line_start + remaining }
-    end
-    remaining = remaining - line_remaining
-    row = row + 1
-  end
-  return { row, col }
-end
-
 local function is_position_after(row, col, target)
   return row > target[1] or (row == target[1] and col > target[2])
 end
@@ -110,19 +86,7 @@ end
 ---@param offset integer offset from prompt end
 ---@return integer[] cursor 1-based row, 0-based column
 local function get_buffer_location_from_shell_offset(buf, offset)
-  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
-  local row = prompt_row
-  local col = prompt_col + offset
-  local line_count = vim.api.nvim_buf_line_count(buf)
-  while row < line_count do
-    local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
-    if col <= #line then
-      return { row, col }
-    end
-    col = col - #line
-    row = row + 1
-  end
-  return { row, col }
+  return live_terminal_buffer.location_from_offset(buf, M.buffers[buf].promt_cursor, offset)
 end
 
 ---Return the editable command zone in the terminal buffer.
@@ -136,7 +100,11 @@ function M.get_editable_zone(buf)
     return nil
   end
   local start_row, start_col = unpack(prompt_cursor)
-  local end_cursor = get_command_end_location_in_buffer(target, prompt_cursor)
+  local end_cursor = live_terminal_buffer.location_from_offset(
+    target,
+    prompt_cursor,
+    #M.read_command_from_buffer(target)
+  )
   return {
     start_row = start_row,
     start_col = start_col,

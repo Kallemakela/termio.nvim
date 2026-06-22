@@ -3,6 +3,7 @@ local config = require("termio.config")
 local chan_send_api = require("termio.chan_send_api")
 local helpers = require("termio.util.helpers")
 local shell_integration = require("termio.shell_integration.general")
+local live_terminal_buffer = require("termio.live_terminal_buffer")
 
 shell_integration.use_buffers(M.buffers)
 chan_send_api.use_buffers(M.buffers)
@@ -16,19 +17,6 @@ local function current_api(api_type)
     return chan_send_api
   end
   error("termio: config.api.type must be 'shell' or 'chan_send'")
-end
-
----@param buf integer
----@return integer[], integer[]
-local function assert_prompt_range(buf)
-  local state = helpers.ensure_buffer_state(M.buffers, buf)
-  if not state.prompt_start_cursor then
-    error("termio: missing OSC133 prompt start cursor")
-  end
-  if not state.prompt_end_cursor then
-    error("termio: missing OSC133 prompt end cursor")
-  end
-  return state.prompt_start_cursor, state.prompt_end_cursor
 end
 
 ---Query the current shell command buffer.
@@ -81,23 +69,8 @@ end
 ---@param buf integer
 ---@return integer[]
 function M.command_cursor(win, buf)
-  local _, prompt_end_cursor = assert_prompt_range(buf)
-  local row, prompt_end_col = unpack(prompt_end_cursor)
-  local cursor = vim.api.nvim_win_get_cursor(win)
-  local command_col = 0
-  for index = row, cursor[1] do
-    local line = vim.api.nvim_buf_get_lines(buf, index - 1, index, false)[1] or ""
-    if index == row then
-      line = line:sub(prompt_end_col + 1)
-    end
-    if index == cursor[1] then
-      local line_col = index == row and math.max(cursor[2] - prompt_end_col, 0) or cursor[2]
-      command_col = command_col + math.min(line_col, #line)
-      break
-    end
-    command_col = command_col + #line
-  end
-  return { 1, command_col }
+  local _, prompt_end_cursor = live_terminal_buffer.prompt_range(M.buffers, buf)
+  return live_terminal_buffer.command_cursor(win, buf, prompt_end_cursor)
 end
 
 return M
