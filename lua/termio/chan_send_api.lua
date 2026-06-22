@@ -46,7 +46,7 @@ end
 ---@param cursor integer
 function M.write_command(buf, command, cursor)
   helpers.send_keys("<C-e><C-u>", buf)
-  helpers.send_bytes(command, buf)
+  helpers.send_bytes("\27[200~" .. command .. "\27[201~", buf)
   move_cursor(buf, cursor, command)
   local state = helpers.ensure_buffer_state(buffers, buf)
   state.shell_state.command = command
