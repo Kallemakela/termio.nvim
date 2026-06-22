@@ -181,6 +181,9 @@ T["editable edit"]["open clears tab suggestions"] = function()
   if vim.env.TERMIO_TEST_SHELL == "bash" then
     MiniTest.skip("bash has no completions to clear")
   end
+  if vim.env.TERMIO_TEST_API == "chan_send" then
+    MiniTest.skip("chan-send cannot clear shell completion suggestions")
+  end
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
