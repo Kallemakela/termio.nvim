@@ -6,6 +6,8 @@
 
 ### C-d problem
 
+### fallback C-e C-u nvim_chan_send sync api
+
 ### visual selection with modifiable and non-modifiable zone to `d` should d the part inside mod zone still(?)
 - at least if trailing non-mod zone since it actually happens quite often on accident
 
@@ -20,8 +22,6 @@
 - fish has `commandline -f repaint` so should work like zsh
 
 ## Chores
-
-update docs to match current zsh only state
 
 ## Investigate
 

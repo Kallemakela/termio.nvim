@@ -577,7 +577,7 @@ local function apply_keymaps(buf)
         log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
         local ok, opened = pcall(M.open, { target_buf = buf })
         if not ok then
-          vim.notify(opened, vim.log.levels.WARN)
+          log.debug("editable.key.open.failed", { buf = buf, error = opened })
         end
         if not ok or opened == false then
           helpers.send_keys(lhs, buf)
