@@ -389,19 +389,28 @@ local function command_end_offset(buf)
   return #M.read_command_from_buffer(buf)
 end
 
-local function command_start_operator_motion(buf)
-  local cursor = get_buffer_location_from_shell_offset(buf, 0)
+local function add_mark_at_command_offset(buf, offset)
+  local cursor = get_buffer_location_from_shell_offset(buf, offset)
   vim.api.nvim_buf_set_mark(buf, "z", cursor[1], cursor[2], {})
   return "`z"
 end
 
-local function command_end_operator_motion(buf)
-  local cursor = get_buffer_location_from_shell_offset(buf, command_end_offset(buf))
+-- Motion used by `0` and `^`: jump to the first byte of the command.
+local function add_mark_to_command_start(buf)
+  return add_mark_at_command_offset(buf, 0)
+end
+
+-- Motion used by `$`: jump to the last command byte, not the exclusive end.
+local function add_mark_to_command_last_byte(buf)
+  return add_mark_at_command_offset(buf, math.max(command_end_offset(buf) - 1, 0))
+end
+
+-- Operator-pending `$` needs an explicit charwise range for wrapped commands.
+local function charwise_command_end_operator_motion(buf)
   -- `g@` needs a real motion range. Jumping to a temporary mark gives Vim that
   -- range; `v` forces charwise selection so multi-row wrapped commands are not
   -- treated as linewise deletions.
-  vim.api.nvim_buf_set_mark(buf, "z", cursor[1], cursor[2], {})
-  return "v`z"
+  return "v" .. add_mark_to_command_last_byte(buf)
 end
 
 local function move_to_command_start(buf)
@@ -653,13 +662,27 @@ end
 
 local function apply_operator_pending_motion_keymaps(buf)
   local operator_motions = {
-    ["0"] = command_start_operator_motion,
-    ["^"] = command_start_operator_motion,
-    ["$"] = command_end_operator_motion,
+    ["0"] = add_mark_to_command_start,
+    ["^"] = add_mark_to_command_start,
+    ["$"] = charwise_command_end_operator_motion,
   }
   for lhs, action in pairs(operator_motions) do
     set_termio_keymap("o", lhs, "editable.key.operator_" .. lhs, buf, function()
       log_editable_key("editable.key.operator_" .. lhs, buf)
+      return action(buf)
+    end, { expr = true })
+  end
+end
+
+local function apply_visual_motion_keymaps(buf)
+  local visual_motions = {
+    ["0"] = add_mark_to_command_start,
+    ["^"] = add_mark_to_command_start,
+    ["$"] = add_mark_to_command_last_byte,
+  }
+  for lhs, action in pairs(visual_motions) do
+    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+      log_editable_key("editable.key.visual_" .. lhs, buf)
       return action(buf)
     end, { expr = true })
   end
@@ -753,6 +776,7 @@ local function apply_editable_keymaps(buf)
   apply_normal_edit_keymaps(buf)
   apply_normal_motion_keymaps(buf)
   apply_operator_pending_motion_keymaps(buf)
+  apply_visual_motion_keymaps(buf)
   apply_normal_operator_keymaps(buf)
   apply_visual_operator_keymaps(buf)
   apply_visual_paste_keymaps(buf)
