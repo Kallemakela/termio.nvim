@@ -2,11 +2,12 @@ local helpers = require("termio.util.helpers")
 local config = require("termio.config")
 local log = require("termio.util.log")
 local bash = require("termio.shell_integration.bash")
+local fish = require("termio.shell_integration.fish")
 local zsh = require("termio.shell_integration.zsh")
 
 local M = {}
 local buffers = {}
-local shells = { bash, zsh }
+local shells = { bash, fish, zsh }
 
 local function wait_for_timeout_poll(name, timeout, predicate, data)
   local started = vim.uv.hrtime()
@@ -35,6 +36,24 @@ local function escape_fifo_payload(value)
   return value:gsub("\\", "\\\\"):gsub("\n", "\\n")
 end
 
+---@param fifo string
+---@return integer
+local function open_fifo_writer(fifo)
+  local flags = vim.uv.constants.O_WRONLY + vim.uv.constants.O_NONBLOCK
+  local timeout = config.options.timeouts.fifo_ready
+  local deadline = vim.uv.hrtime() + timeout.limit_ms * 1e6
+  local last_error
+  repeat
+    local fd, err, err_name = vim.uv.fs_open(fifo, flags, 384)
+    if type(fd) == "number" and fd >= 0 then
+      return fd
+    end
+    last_error = err_name or err
+    vim.wait(timeout.interval_ms)
+  until vim.uv.hrtime() >= deadline
+  error("termio: shell integration FIFO has no reader: " .. tostring(last_error))
+end
+
 ---@param buf integer
 ---@param action string
 ---@param payload? string
@@ -50,10 +69,12 @@ local function send_fifo_frame(buf, action, payload)
     state.shell_fifo_path = nil
     error("termio: shell integration FIFO unavailable")
   end
-  local fd = assert(vim.uv.fs_open(fifo, "w", 384))
+  local fd = open_fifo_writer(fifo)
   local ok, err = vim.uv.fs_write(fd, action .. "\t" .. (payload or "") .. "\n", -1)
   vim.uv.fs_close(fd)
-  assert(ok, err)
+  if type(ok) ~= "number" or ok < 0 then
+    error(err or "termio: shell integration FIFO write failed")
+  end
   log.debug("shell fifo frame", { buf = buf, action = action, fifo = fifo })
 end
 
@@ -67,6 +88,9 @@ local function send_shell_action(buf, action, payload)
     wait_for_timeout_poll("fifo_ready", timeout, function()
       return state.shell_fifo_path ~= nil
     end, { buf = buf, action = action })
+  end
+  if state.shell_integration.before_send_action then
+    state.shell_integration.before_send_action(buf, state)
   end
   send_fifo_frame(buf, action, payload)
   state.shell_integration.after_send_action(buf, state)
@@ -176,6 +200,14 @@ end
 ---@param timeout_ms? integer
 ---@return string
 function M.read_command(buf, timeout_ms)
+  return M.read_state(buf, nil, timeout_ms).command
+end
+
+---@param buf integer
+---@param _win? integer
+---@param timeout_ms? integer
+---@return { command: string, cursor: integer? }
+function M.read_state(buf, _win, timeout_ms)
   local state = helpers.ensure_buffer_state(buffers, buf)
   state.shell_query_pending = true
   send_shell_action(buf, "query", "")
@@ -188,12 +220,13 @@ function M.read_command(buf, timeout_ms)
   if not received then
     error("termio: shell command query timed out")
   end
-  return state.shell_state.command
+  return vim.deepcopy(state.shell_state)
 end
 
 ---@param buf integer
 function M.clear_completion_suggestions(buf)
-  send_shell_action(buf, "clear-completions", "")
+  local state = helpers.ensure_buffer_state(buffers, buf)
+  state.shell_integration.clear_completion_suggestions(buf, send_shell_action)
 end
 
 ---Write shell command buffer directly.

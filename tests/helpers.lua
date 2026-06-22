@@ -3,6 +3,7 @@ local Helpers = {}
 local test_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h")
 local test_zdotdir = test_root .. "/zsh-test"
 local test_bash_env = test_root .. "/bash-test/env"
+local test_fish_config = test_root .. "/fish-test"
 
 -- Add extra expectations
 Helpers.expect = vim.deepcopy(MiniTest.expect)
@@ -212,6 +213,9 @@ Helpers.setup_child = function(child, setup)
   child.lua(string.format(
     [[
       require("termio").setup(vim.tbl_deep_extend("force", {
+        api = {
+          type = vim.env.TERMIO_TEST_API or "shell",
+        },
         debug = true,
         -- TODO: Inspect why headless test shells need much larger FIFO roundtrip timeouts.
         timeouts = {
@@ -322,12 +326,20 @@ Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
   )
 end
 
-Helpers.open_editable_normal_mode = function(child, buf, timeout)
+Helpers.open_terminal_normal_mode = function(child, timeout)
   child.api.nvim_input("<Esc>")
   Helpers.wait_for_mode(child, "nt", timeout)
+end
+
+Helpers.wait_for_modifiable = function(child, buf, timeout)
   Helpers.wait_until(child, function()
     return child.api.nvim_get_option_value("modifiable", { buf = buf })
   end, timeout)
+end
+
+Helpers.open_editable_normal_mode = function(child, buf, timeout)
+  Helpers.open_terminal_normal_mode(child, timeout)
+  Helpers.wait_for_modifiable(child, buf, timeout)
 end
 
 Helpers.wait_for_shell_output = function(child, buf, expected, timeout)
@@ -374,6 +386,15 @@ Helpers.open_shell = function(child, prompt, shell)
         test_root,
         prompt,
         test_bash_env
+      )
+    )
+  elseif shell == "fish" then
+    child.cmd(
+      string.format(
+        [[terminal env XDG_CONFIG_HOME=%q TERMIO_REPO_ROOT=%q TERMIO_TEST_PROMPT=%q fish -i]],
+        test_fish_config,
+        test_root,
+        prompt
       )
     )
   else

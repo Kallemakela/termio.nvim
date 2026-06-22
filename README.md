@@ -88,6 +88,10 @@ Defaults live in `lua/termio/config.lua`.
 
 ```lua
 require("termio").setup({
+  api = {
+    -- "shell": FIFO shell integration. "chan_send": nvim_chan_send API.
+    type = "shell",
+  },
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",

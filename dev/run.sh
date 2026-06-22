@@ -9,12 +9,13 @@ EDITOR_MODE=editable
 LAYOUT_MODE=single
 DEBUG=
 AUTO=
+CHANSEND=
 HEADLESS=
 POST_SETUP=
 DEMO=
 
 usage() {
-	printf '%s\n' "usage: $0 [--headless] [--words N] [--multi] [--debug] [--auto] [--demo] [--post-setup EXPR] [--config debug|own] [--editor TYPE] [--layout single|v|h]" >&2
+	printf '%s\n' "usage: $0 [--headless] [--words N] [--multi] [--debug] [--auto] [--chansend] [--demo] [--post-setup EXPR] [--config debug|own] [--editor TYPE] [--layout single|v|h]" >&2
 }
 
 while [ "$#" -gt 0 ]; do
@@ -37,6 +38,10 @@ while [ "$#" -gt 0 ]; do
 			;;
 		--auto)
 			AUTO=1
+			shift
+			;;
+		--chansend)
+			CHANSEND=1
 			shift
 			;;
 		--headless)
@@ -128,19 +133,19 @@ if [ "$HEADLESS" = 1 ]; then
 	NVIM_HEADLESS=--headless
 fi
 
-	if [ "$CONFIG_MODE" = debug ]; then
-		if [ "$HEADLESS" = 1 ]; then
-			exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_POST_SETUP="$POST_SETUP" nvim $NVIM_HEADLESS --cmd "lua dofile([[$ROOT/dev/headless.lua]])"
-		fi
-		exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" nvim $NVIM_HEADLESS -u "$ROOT/dev/interactive.lua"
+if [ "$CONFIG_MODE" = debug ]; then
+	if [ "$HEADLESS" = 1 ]; then
+		exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_CHANSEND="$CHANSEND" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_POST_SETUP="$POST_SETUP" TERMIO_REPO_ROOT="$ROOT" nvim $NVIM_HEADLESS -u NONE --cmd "lua dofile([[$ROOT/dev/headless.lua]])"
 	fi
+	exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_CHANSEND="$CHANSEND" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_REPO_ROOT="$ROOT" nvim $NVIM_HEADLESS -u "$ROOT/dev/interactive.lua"
+fi
 
-	if [ "$CONFIG_MODE" = own ]; then
-		if [ "$HEADLESS" = 1 ]; then
-			exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_POST_SETUP="$POST_SETUP" nvim $NVIM_HEADLESS --cmd "lua dofile([[$ROOT/dev/headless.lua]])"
-		fi
-		exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" nvim $NVIM_HEADLESS --cmd "lua dofile([[$ROOT/dev/interactive.lua]])"
+if [ "$CONFIG_MODE" = own ]; then
+	if [ "$HEADLESS" = 1 ]; then
+		exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_CHANSEND="$CHANSEND" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_POST_SETUP="$POST_SETUP" TERMIO_REPO_ROOT="$ROOT" nvim $NVIM_HEADLESS --cmd "lua dofile([[$ROOT/dev/headless.lua]])"
 	fi
+	exec env LOREM_WORDS="$WORDS" MULTILINE="$MULTILINE" TERMIO_DEBUG="$DEBUG" TERMIO_AUTO="$AUTO" TERMIO_CHANSEND="$CHANSEND" TERMIO_DEMO="$DEMO" TERMIO_EDITOR="$EDITOR_MODE" TERMIO_LAYOUT="$LAYOUT_MODE" TERMIO_REPO_ROOT="$ROOT" nvim $NVIM_HEADLESS --cmd "lua dofile([[$ROOT/dev/interactive.lua]])"
+fi
 
-	printf '%s\n' "config must be one of: debug, own" >&2
-	exit 1
+printf '%s\n' "config must be one of: debug, own" >&2
+exit 1

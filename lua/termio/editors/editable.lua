@@ -552,21 +552,19 @@ function M.open(ctx)
     log.debug("editable.open.disabled", { buf = buf, win = win })
     return false
   end
+  local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
+  buffer_state.shell_state = api.read_state(buf, win)
+  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
+  vim.cmd("stopinsert")
+  wait_for_terminal_leave(buf)
   local ok, err = pcall(api.clear_completion_suggestions, buf)
   if not ok then
     log.debug("editable clear completions skipped", { buf = buf, error = err })
   end
-  local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
-  api.read_command(buf)
-  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
-  vim.cmd("stopinsert")
-  wait_for_terminal_leave(buf)
   wait_until_command_is_rendered(buf, buffer_state.shell_state.command)
-  vim.schedule(function()
-    local cursor = vim.api.nvim_win_get_cursor(win)
-    cursor = move_cursor_back_to_editable_zone(buf, cursor, win, buffer_state.shell_state.cursor)
-    refresh_editable_state(buf, cursor, win)
-  end)
+  local cursor = vim.api.nvim_win_get_cursor(win)
+  cursor = move_cursor_back_to_editable_zone(buf, cursor, win, buffer_state.shell_state.cursor)
+  refresh_editable_state(buf, cursor, win)
   return true
 end
 
@@ -792,13 +790,8 @@ local function apply_editable_keymaps(buf)
   apply_visual_paste_keymaps(buf)
 end
 
----@class EditableTermConfig
----@field promts? table<string, true>
-
----@param config EditableTermConfig
-M.setup = function(config)
+M.setup = function()
   M.buffers = M.buffers or {}
-  M.promts = (config or {}).promts
   vim.api.nvim_create_autocmd("TermOpen", {
     group = vim.api.nvim_create_augroup("editable-term", {}),
     callback = function(args)
@@ -825,29 +818,10 @@ M.setup = function(config)
         group = editgroup,
         buffer = args.buf,
         callback = function(args)
-          local bufinfo = M.buffers[args.buf]
           -- Any TextChanged immediately after leaving terminal mode may come
           -- from the mode switch or shell redraw instead of a deliberate edit.
           set_sync_block_reason(args.buf, "term_leave")
-          local ln = vim.api.nvim_get_current_line()
-          local cursor = vim.api.nvim_win_get_cursor(0)
-          log.debug("editable.term_leave", { buf = args.buf, line = ln, cursor = cursor })
-          vim.api.nvim_win_set_cursor(0, cursor)
-          local line_num = cursor[1]
-          if M.promts ~= nil and ln ~= nil then
-            for pattern in pairs(M.promts) do
-              local start, ent = ln:find(pattern)
-              if start ~= nil then
-                bufinfo.promt_cursor = { line_num, ent }
-                log.debug("editable.term_leave.prompt_match", {
-                  buf = args.buf,
-                  pattern = pattern,
-                  prompt_cursor = bufinfo.promt_cursor,
-                })
-                break
-              end
-            end
-          end
+          log.debug("editable.term_leave", { buf = args.buf })
         end,
       })
       vim.api.nvim_create_autocmd("TermRequest", {
@@ -871,15 +845,10 @@ M.setup = function(config)
         group = editgroup,
         buffer = args.buf,
         callback = function(args)
-          local cursor = vim.api.nvim_win_get_cursor(0)
-          local bufinfo = M.buffers[args.buf]
-          refresh_editable_state(args.buf, cursor)
-          log.debug("editable.cursor_moved", {
-            buf = args.buf,
-            cursor = vim.api.nvim_win_get_cursor(0),
-            prompt_cursor = bufinfo.promt_cursor,
-            modifiable = vim.bo.modifiable,
-          })
+          if M.buffers[args.buf].sync_block_reason == "term_leave" then
+            return
+          end
+          refresh_editable_state(args.buf, vim.api.nvim_win_get_cursor(0))
         end,
       })
     end,

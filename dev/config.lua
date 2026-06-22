@@ -19,7 +19,11 @@ function M.setup(opts)
   if opts.before_setup then
     opts.before_setup()
   end
-  require("termio").setup(debug_options.build())
+  local options = debug_options.build()
+  if vim.env.TERMIO_CHANSEND == "1" then
+    options.api = { type = "chan_send" }
+  end
+  require("termio").setup(options)
 end
 
 return M

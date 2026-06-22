@@ -19,4 +19,6 @@ function M.after_send_action(buf, state)
   log.debug("shell wake", { buf = buf, shell = state.shell_kind })
 end
 
+function M.clear_completion_suggestions() end
+
 return M

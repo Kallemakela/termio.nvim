@@ -50,7 +50,7 @@ T["editable edit"]["open key leaves terminal mode"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
-  Helpers.open_editable_normal_mode(child, buf)
+  Helpers.open_terminal_normal_mode(child)
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
 end
 

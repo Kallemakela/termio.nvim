@@ -4,9 +4,8 @@
 
 ## Features
 
-### C-d problem
-
-### fallback C-e C-u nvim_chan_send sync api
+### REPL support
+- add prompt recognition for e.g. python >>> (or markers if possible)
 
 ### visual selection with modifiable and non-modifiable zone to `d` should d the part inside mod zone still(?)
 - at least if trailing non-mod zone since it actually happens quite often on accident

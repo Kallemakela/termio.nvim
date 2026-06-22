@@ -75,6 +75,7 @@ function M.collect()
   local target = { active = false, cursor = "-", command = "-" }
   local buffer = { cursor = "-", command = "missing terminal" }
   local config = get_config()
+  local api_options = config.options and config.options.api or config.defaults.api
   local editor_options = config.options and config.options.editor or config.defaults.editor
   if terminal.buf and vim.api.nvim_buf_is_valid(terminal.buf) then
     local api = get_api()
@@ -102,14 +103,21 @@ function M.collect()
     target.command = table.concat(vim.api.nvim_buf_get_lines(editor_buf, 0, -1, false), "\n")
     target.active = true
   end
-  return { terminal = terminal, shell = shell, target = target, buffer = buffer }
+  return {
+    api = api_options.type,
+    terminal = terminal,
+    shell = shell,
+    target = target,
+    buffer = buffer,
+  }
 end
 
 function M.render_lines(snapshot)
   return {
     string.format(
-      "target: type=%s active=%s mode=%s term=%s/%s/%s buf=%s win=%s",
+      "target: type=%s api=%s active=%s mode=%s term=%s/%s/%s buf=%s win=%s",
       snapshot.target.type or "-",
+      snapshot.api or "-",
       tostring(snapshot.target.active),
       vim.api.nvim_get_mode().mode,
       snapshot.terminal.buf or "-",

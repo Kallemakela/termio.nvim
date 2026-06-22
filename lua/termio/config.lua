@@ -1,6 +1,9 @@
 local M = {}
 
 M.defaults = {
+  api = {
+    type = "shell",
+  },
   write_strip_patterns = { "\n" },
   timeouts = {
     -- Poll for shell integration to publish its FIFO after terminal startup.
@@ -22,7 +25,7 @@ M.defaults = {
   },
   editor = {
     type = "editable",
-    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     open = "<Esc>",
     is_disabled = function()
       return false

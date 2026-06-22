@@ -6,6 +6,7 @@ Recommended for testing. Uses a minimal config without other plugins etc.
 
 ```sh
 sh ./dev/run.sh --debug --words 300
+sh ./dev/run.sh --debug --chansend
 SHELL=/opt/homebrew/bin/bash
 ```
 
@@ -13,6 +14,7 @@ Debug output: `./tmp/dev.out`.
 
 #### Args
 - `--debug`: write Neovim verbose output and termio debug logs to `./tmp/dev.out`.
+- `--chansend`: configure `api.type = "chan_send"` so main API calls use `nvim_chan_send`.
 - `--words N`: prefill the terminal with a lorem command of `N` words.
 - `--multi`: split the prefilled command over multiple shell lines.
 - `--headless`: run without UI, then quit.
@@ -51,14 +53,15 @@ Run all tests:
 ```sh
 make test
 make test-bash
+make test-chansend
+make test-fish
 ```
 
 Tests write debug output to `./tmp/test.out`.
 
 Env vars:
 
-- `TERMIO_TEST_SHELL=(bash|zsh)`
+- `TERMIO_TEST_SHELL=(bash|fish|zsh)`
+- `TERMIO_TEST_API=(shell|chan_send)`
 
 Read some existing tests before writing new ones. Testing requires a lot of quirks since almost everything is async when working with the terminal.
-
-
