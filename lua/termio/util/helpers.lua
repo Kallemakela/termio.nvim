@@ -121,6 +121,10 @@ function M.ensure_buffer_state(buffers, buf)
     or {
       prompt_start_cursor = nil,
       prompt_end_cursor = nil,
+      active_prompt_cursor = nil,
+      active_prompt_source = nil,
+      active_prompt_process = nil,
+      terminal_title = nil,
       shell_phase = nil,
       shell_fifo_path = nil,
       shell_state = { command = "", cursor = nil },

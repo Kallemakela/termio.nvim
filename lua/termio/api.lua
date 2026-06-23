@@ -2,7 +2,7 @@ local M = { buffers = {} }
 local config = require("termio.config")
 local chan_send_api = require("termio.chan_send_api")
 local helpers = require("termio.util.helpers")
-local shell_integration = require("termio.shell_integration.general")
+local shell_integration = require("termio.shell_integration")
 local live_terminal_buffer = require("termio.live_terminal_buffer")
 
 shell_integration.use_buffers(M.buffers)

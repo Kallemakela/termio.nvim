@@ -1,6 +1,6 @@
 local api = require("termio.api")
 local config = require("termio.config")
-local shell_integration = require("termio.shell_integration.general")
+local shell_integration = require("termio.shell_integration")
 
 local M = {}
 

@@ -48,9 +48,8 @@ end
 
 local function read_buffer_state(buf, win)
   local api = get_api()
-  local helpers = get_helpers()
-  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
-  return { command = shell_state.command, cursor = api.command_cursor(win, buf)[2] }
+  local command_state = get_helpers().ensure_buffer_state(api.buffers, buf).shell_state
+  return { command = command_state.command, cursor = api.command_cursor(win, buf)[2] }
 end
 
 local function find_editor_window()
@@ -79,8 +78,7 @@ function M.collect()
   local editor_options = config.options and config.options.editor or config.defaults.editor
   if terminal.buf and vim.api.nvim_buf_is_valid(terminal.buf) then
     local api = get_api()
-    local helpers = get_helpers()
-    local buf_state = helpers.ensure_buffer_state(api.buffers, terminal.buf)
+    local buf_state = get_helpers().ensure_buffer_state(api.buffers, terminal.buf)
     local visible = nil
     if buf_state.prompt_end_cursor and terminal.win and vim.api.nvim_win_is_valid(terminal.win) then
       visible = read_buffer_state(terminal.buf, terminal.win)

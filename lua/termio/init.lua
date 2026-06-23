@@ -1,7 +1,7 @@
 local api = require("termio.api")
 local config = require("termio.config")
 local commands = require("termio.commands")
-local shell_integration = require("termio.shell_integration.general")
+local shell_state = require("termio.shell_state")
 local state = require("termio.state")
 
 local M = {
@@ -26,7 +26,9 @@ end
 local function create_autocmds()
   vim.api.nvim_create_autocmd("TermRequest", {
     group = vim.api.nvim_create_augroup("termio-osc133", { clear = true }),
-    callback = shell_integration.handle_term_request,
+    callback = function(args)
+      shell_state.handle_term_request(api.buffers, args)
+    end,
   })
 end
 

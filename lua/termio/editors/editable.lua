@@ -258,9 +258,9 @@ function M.write(buf, target)
     end
     log.debug("editable.writing.stop", { buf = buf })
   end, delay)
-  local shell_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
-  local did_sync = shell_state.command ~= command
-    or (cursor ~= nil and shell_state.cursor ~= cursor)
+  local command_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
+  local did_sync = command_state.command ~= command
+    or (cursor ~= nil and command_state.cursor ~= cursor)
   if did_sync then
     api.write_command(command, buf, cursor)
     wait_until_command_is_rendered(buf, command)

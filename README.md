@@ -185,10 +185,11 @@ termio.nvim/
 │   ├── live_terminal_buffer.lua terminal-buffer state tracking
 │   ├── chan_send_api.lua        nvim_chan_send backend
 │   ├── state.lua                plugin state
+│   ├── shell_state.lua          shell prompt and command state
 │   ├── editors/                 bundled terminal-buffer editors
 │   │   └── editable.lua         default editable-buffer editor
 │   ├── shell_integration/       shell-backed API implementation
-│   │   ├── general.lua          shared shell api
+│   │   ├── init.lua             shell integration api
 │   │   ├── zsh.lua              zsh integration
 │   │   ├── bash.lua             bash integration
 │   │   └── fish.lua             fish integration
