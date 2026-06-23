@@ -207,6 +207,37 @@ termio.nvim/
 └── Makefile                     all-test entrypoint
 ```
 
+## REPLs
+
+`termio.nvim` uses OSC133 markers to detect where the prompt ends and the
+editable command starts. Shell integrations add these markers to shell prompts.
+
+For REPLs, add the same markers to the REPL prompt. Example for python:
+
+```sh
+# ~/.zshrc
+export PYTHONSTARTUP="$HOME/.pythonrc.py"
+```
+
+```python
+import sys
+
+OSC133_PROMPT_START = "\001\033]133;A\007\002"
+OSC133_PROMPT_END = "\001\033]133;B\007\002"
+
+sys.ps1 = OSC133_PROMPT_START + ">>> " + OSC133_PROMPT_END
+sys.ps2 = OSC133_PROMPT_START + "... " + OSC133_PROMPT_END
+```
+
+Check that prompt is as expected:
+```python
+>>> print(repr(sys.ps1))
+'\x01\x1b]133;A\x07\x02>>> \x01\x1b]133;B\x07\x02'
+```
+
+> [!NOTE]
+> REPLs should use the `chan_send` API, because they do not expose the shell FIFO.
+
 ## [Known issues/Planned features/Roadmap/TODO](./docs/todo.md)
 
 ## [Contributing](./docs/contributing.md)
