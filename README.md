@@ -88,10 +88,8 @@ Defaults live in `lua/termio/config.lua`.
 
 ```lua
 require("termio").setup({
-  api = {
-    -- "shell": FIFO shell integration. "chan_send": nvim_chan_send API.
-    type = "shell",
-  },
+  -- "auto" currently uses PTY IO. "fifo" is experimental.
+  io_backend = "auto", -- "auto" | "pty" | "fifo"
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",
@@ -237,7 +235,7 @@ Check that prompt is as expected:
 ```
 
 > [!NOTE]
-> REPLs should use the `chan_send` API, because they do not expose the shell FIFO.
+> REPLs should use the PTY backend, because they do not expose the shell FIFO.
 
 ## [Known issues/Planned features/Roadmap/TODO](./docs/todo.md)
 

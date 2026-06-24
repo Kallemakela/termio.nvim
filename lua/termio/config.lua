@@ -1,9 +1,7 @@
 local M = {}
 
 M.defaults = {
-  api = {
-    type = "shell",
-  },
+  io_backend = "auto",
   write_strip_patterns = { "\n" },
   timeouts = {
     -- Poll for shell integration to publish its FIFO after terminal startup.
