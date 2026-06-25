@@ -1,5 +1,6 @@
 local helpers = require("termio.util.helpers")
 local live_terminal_buffer = require("termio.live_terminal_buffer")
+local shell_integration = require("termio.shell_integration")
 
 local M = {}
 local buffers = {}
@@ -57,6 +58,7 @@ function M.write_command(buf, command, cursor)
   helpers.send_bytes("\27[200~" .. command .. "\27[201~", buf)
   move_cursor(buf, cursor, command)
   local state = helpers.ensure_buffer_state(buffers, buf)
+  shell_integration.redraw_after_pty_write(buf)
   state.shell_state.command = command
   state.shell_state.cursor = cursor
 end

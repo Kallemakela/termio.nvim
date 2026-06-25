@@ -147,6 +147,14 @@ function M.clear_completion_suggestions(buf)
   state.shell_integration.clear_completion_suggestions(buf, send_shell_action)
 end
 
+---@param buf integer
+function M.redraw_after_pty_write(buf)
+  local state = helpers.ensure_buffer_state(buffers, buf)
+  if state.shell_integration then
+    state.shell_integration.redraw_after_pty_write(buf)
+  end
+end
+
 ---Write shell command buffer directly.
 ---@param buf integer
 ---@param command string

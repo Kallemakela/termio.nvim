@@ -33,6 +33,10 @@ termio_shell_clear_completions() {
   zle -R -c
 }
 
+termio_shell_redraw() {
+  zle reset-prompt
+}
+
 termio_shell_write_buffer() {
   local payload="$1"
   local cursor="${payload%%$'\n'*}"
@@ -72,6 +76,8 @@ termio_shell_control_fifo() {
   done
 }
 zle -N termio-control-fifo termio_shell_control_fifo
+zle -N termio-redraw termio_shell_redraw
+bindkey $'\e[27;5;84~' termio-redraw
 
 termio_shell_cleanup() {
   if [[ -n ${TERMIO_FIFO_FD:-} ]]; then

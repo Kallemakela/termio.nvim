@@ -27,4 +27,6 @@ function M.clear_completion_suggestions(buf, send_shell_action)
   send_shell_action(buf, "clear-completions", "")
 end
 
+function M.redraw_after_pty_write() end
+
 return M

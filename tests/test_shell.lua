@@ -48,6 +48,9 @@ T["shell integration"]["test fifo frame writes zsh buffer"] = function()
 end
 
 T["shell integration"]["test fifo write surfaces write error"] = function()
+  if vim.env.TERMIO_TEST_IO_BACKEND ~= "fifo" then
+    MiniTest.skip("requires fifo io backend")
+  end
   local buf = Helpers.open_shell(child)
   child.lua(
     [[

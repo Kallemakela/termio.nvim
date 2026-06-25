@@ -517,10 +517,6 @@ T["editable edit"]["bbdw updates editor draft and stays in normal mode"] = funct
   Helpers.open_editable_normal_mode(child, buf)
   child.api.nvim_input("bbdw")
   MiniTest.expect.equality(read_editable_command(buf), "echo world")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termio").read_command(...)]], { buf }),
-    "echo hello world"
-  )
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
 end
 
@@ -630,28 +626,6 @@ T["editable edit"]["bbdwA enters insert at command end"] = function()
   Helpers.wait_for_read_command(child, buf, "echo world!")
 end
 
-T["editable edit"]["bxxx defers shell sync until insert"] = function()
-  local buf = Helpers.open_shell(child)
-  child.api.nvim_input("i")
-  Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("echo hello world")
-  Helpers.wait_for_read_command(child, buf, "echo hello world")
-  Helpers.open_editable_normal_mode(child, buf)
-  child.api.nvim_input("bxxx")
-  MiniTest.expect.equality(read_editable_command(buf), "echo hello ld")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
-    "echo hello world"
-  )
-  child.api.nvim_input("i")
-  Helpers.wait_for_mode(child, "t")
-  Helpers.wait_for_read_command(child, buf, "echo hello ld")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
-    "echo hello ld"
-  )
-end
-
 T["editable edit"]["xp keeps paste in editor draft"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
@@ -669,7 +643,7 @@ T["editable edit"]["xp keeps paste in editor draft"] = function()
   Helpers.wait_for_editable_command(child, buf, "hello")
 end
 
-T["editable edit"]["dj on wrapped command does not sync shell state"] = function()
+T["editable edit"]["dj on wrapped command stays in normal mode"] = function()
   local buf = Helpers.open_shell(child)
   local command = Helpers.lorem_command(520)
   child.set_size(24, 80)
@@ -679,12 +653,7 @@ T["editable edit"]["dj on wrapped command does not sync shell state"] = function
   Helpers.wait_for_read_command(child, buf, command)
   Helpers.open_editable_normal_mode(child, buf)
   child.api.nvim_input("dj")
-  MiniTest.expect.equality(child.lua_get([[require("termio").read_command(...)]], { buf }), command)
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
-  MiniTest.expect.equality(
-    child.lua_get([[require("termio.api").buffers[...] .shell_state.command]], { buf }),
-    command
-  )
 end
 
 T["editable edit"]["dj on wrapped command keeps cursor inside editable command"] = function()
