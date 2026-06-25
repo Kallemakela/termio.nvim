@@ -35,6 +35,15 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   )
 end
 
+T["read_command()"]["applies configured read strip patterns"] = function()
+  child.lua([[require("termio.config").options.read_strip_patterns = { "%s+$" }]])
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo keep   ")
+  Helpers.wait_for_read_command(child, buf, "echo keep")
+end
+
 T["write_command()"] = MiniTest.new_set()
 
 T["write_command()"]["empty command after cursor stays empty"] = function()

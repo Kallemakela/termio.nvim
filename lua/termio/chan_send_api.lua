@@ -1,3 +1,4 @@
+local config = require("termio.config")
 local helpers = require("termio.util.helpers")
 local live_terminal_buffer = require("termio.live_terminal_buffer")
 local shell_integration = require("termio.shell_integration")
@@ -42,10 +43,10 @@ function M.read_state(buf, win)
   local command = live_terminal_buffer.command_text(buf, prompt_end_cursor, true)
   local state = helpers.ensure_buffer_state(buffers, buf)
   win = win or visible_window(buf)
+  local cursor = win and live_terminal_buffer.command_cursor(win, buf, prompt_end_cursor)[2] or nil
+  command = helpers.strip_patterns(command, config.options.read_strip_patterns)
   state.shell_state.command = command
-  state.shell_state.cursor = win
-      and live_terminal_buffer.command_cursor(win, buf, prompt_end_cursor)[2]
-    or nil
+  state.shell_state.cursor = cursor
   return vim.deepcopy(state.shell_state)
 end
 

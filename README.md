@@ -90,6 +90,7 @@ Defaults live in `lua/termio/config.lua`.
 require("termio").setup({
   -- "auto" currently uses PTY IO. "fifo" is experimental.
   io_backend = "auto", -- "auto" | "pty" | "fifo"
+  read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   editor = {
     type = "editable",

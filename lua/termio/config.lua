@@ -2,6 +2,7 @@ local M = {}
 
 M.defaults = {
   io_backend = "auto",
+  read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   timeouts = {
     -- Poll for shell integration to publish its FIFO after terminal startup.
