@@ -13,7 +13,7 @@ end
 ---@param buf integer
 ---@param cursor integer
 ---@param command string
-local function move_cursor(buf, cursor, command)
+local function move_shell_cursor(buf, cursor, command)
   local delta = #command - cursor
   if delta > 0 then
     helpers.send_bytes(("\27[D"):rep(delta), buf)
@@ -56,7 +56,7 @@ end
 function M.write_command(buf, command, cursor)
   helpers.send_keys("<C-e><C-u>", buf)
   helpers.send_bytes("\27[200~" .. command .. "\27[201~", buf)
-  move_cursor(buf, cursor, command)
+  move_shell_cursor(buf, cursor, command)
   local state = helpers.ensure_buffer_state(buffers, buf)
   shell_integration.redraw_after_pty_write(buf)
   state.shell_state.command = command
