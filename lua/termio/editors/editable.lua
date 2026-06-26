@@ -27,29 +27,32 @@ local function set_sync_block_reason(buf, reason)
   M.buffers[buf].sync_block_reason = reason
 end
 
+local function command_start_cursor(buf)
+  local _, prompt_end_cursor = live_terminal_buffer.get_prompt_range(api.buffers, buf)
+  return prompt_end_cursor
+end
+
 ---Read the editable draft command from the terminal buffer.
 ---@param buf integer
 ---@return string
 function M.read_command_from_buffer(buf)
-  local prompt_cursor = M.buffers[buf].promt_cursor
-  return live_terminal_buffer.command_text(buf, prompt_cursor)
+  return live_terminal_buffer.command_text(buf, command_start_cursor(buf))
 end
 
 local function read_editor_state(buf, win)
   return {
     command = M.read_command_from_buffer(buf),
-    cursor = live_terminal_buffer.command_cursor(win, buf, M.buffers[buf].promt_cursor)[2],
+    cursor = live_terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
   }
 end
 
 local function is_prompt_rendered(buf)
-  local prompt_cursor = M.buffers[buf].promt_cursor
-  if not prompt_cursor then
+  local cursor = command_start_cursor(buf)
+  if not cursor then
     return false
   end
-  local line = vim.api.nvim_buf_get_lines(buf, prompt_cursor[1] - 1, prompt_cursor[1], false)[1]
-    or ""
-  return #line >= prompt_cursor[2]
+  local line = vim.api.nvim_buf_get_lines(buf, cursor[1] - 1, cursor[1], false)[1] or ""
+  return #line >= cursor[2]
 end
 
 local function is_command_rendered(buf, command)
@@ -86,7 +89,7 @@ end
 ---@param offset integer offset from prompt end
 ---@return integer[] cursor 1-based row, 0-based column
 local function get_buffer_location_from_shell_offset(buf, offset)
-  return live_terminal_buffer.location_from_offset(buf, M.buffers[buf].promt_cursor, offset)
+  return live_terminal_buffer.location_from_offset(buf, command_start_cursor(buf), offset)
 end
 
 ---Return the editable command zone in the terminal buffer.
@@ -94,17 +97,13 @@ end
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
 function M.get_editable_zone(buf)
   local target = buf or vim.api.nvim_get_current_buf()
-  local bufinfo = M.buffers and M.buffers[target]
-  local prompt_cursor = bufinfo and bufinfo.promt_cursor
-  if not prompt_cursor then
+  local cursor = command_start_cursor(target)
+  if not cursor then
     return nil
   end
-  local start_row, start_col = unpack(prompt_cursor)
-  local end_cursor = live_terminal_buffer.location_from_offset(
-    target,
-    prompt_cursor,
-    #M.read_command_from_buffer(target)
-  )
+  local start_row, start_col = unpack(cursor)
+  local end_cursor =
+    live_terminal_buffer.location_from_offset(target, cursor, #M.read_command_from_buffer(target))
   return {
     start_row = start_row,
     start_col = start_col,
@@ -176,19 +175,16 @@ end
 ---@param command_length? integer
 ---@return integer[] cursor
 local function clamp_cursor_to_editable_zone(buf, cursor, command_length)
-  local prompt_cursor = M.buffers[buf].promt_cursor
-  if not prompt_cursor then
-    return cursor
-  end
   local zone = M.get_editable_zone(buf)
   if not zone then
     return cursor
   end
+  local min_cursor = { zone.start_row, zone.start_col }
   local max_cursor = { zone.end_row, zone.end_col }
   if command_length then
     max_cursor = get_buffer_location_from_shell_offset(buf, math.max(command_length - 1, 0))
   end
-  return clamp_cursor(cursor, prompt_cursor, max_cursor)
+  return clamp_cursor(cursor, min_cursor, max_cursor)
 end
 
 ---@param win integer
@@ -352,7 +348,7 @@ end
 ---@param cursor integer[] 1-based row, 0-based column
 ---@return integer offset
 local function get_shell_cursor_offset(buf, cursor)
-  local prompt_row, prompt_col = unpack(M.buffers[buf].promt_cursor)
+  local prompt_row, prompt_col = unpack(command_start_cursor(buf))
   local offset = 0
   for row = prompt_row, cursor[1] do
     local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
@@ -488,7 +484,7 @@ function M.handle_text_changed(buf)
     has_unsynced_edits = bufinfo.has_unsynced_edits,
     line = vim.api.nvim_get_current_line(),
   })
-  if not bufinfo.promt_cursor then
+  if not command_start_cursor(buf) then
     log.debug("editable.text_changed.skip", {
       buf = buf,
       sync_block_reason = bufinfo.sync_block_reason,
@@ -530,6 +526,7 @@ function M.open(ctx)
     return false
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
+  live_terminal_buffer.update_prompt_cursors_from_patterns(api.buffers, buf, win)
   buffer_state.shell_state = api.read_state(buf, win)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   vim.cmd("stopinsert")
@@ -814,16 +811,6 @@ M.setup = function()
           -- from the mode switch or shell redraw instead of a deliberate edit.
           set_sync_block_reason(args.buf, "term_leave")
           log.debug("editable.term_leave", { buf = args.buf })
-        end,
-      })
-      vim.api.nvim_create_autocmd("TermRequest", {
-        group = editgroup,
-        buffer = args.buf,
-        callback = function(args)
-          if string.match(args.data.sequence, "^\027]133;B") then
-            M.buffers[args.buf].promt_cursor = args.data.cursor
-            log.debug("editable.term_request.prompt", { buf = args.buf, cursor = args.data.cursor })
-          end
         end,
       })
       vim.api.nvim_create_autocmd("BufDelete", {

@@ -2,6 +2,7 @@ local M = {}
 
 M.defaults = {
   io_backend = "auto",
+  prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   timeouts = {

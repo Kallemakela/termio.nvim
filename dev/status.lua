@@ -48,8 +48,12 @@ end
 
 local function read_buffer_state(buf, win)
   local api = get_api()
+  local live_terminal_buffer = require("termio.live_terminal_buffer")
   local command_state = get_helpers().ensure_buffer_state(api.buffers, buf).shell_state
-  return { command = command_state.command, cursor = api.command_cursor(win, buf)[2] }
+  return {
+    command = command_state.command,
+    cursor = live_terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
+  }
 end
 
 local function find_editor_window()

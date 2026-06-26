@@ -340,16 +340,17 @@ Helpers.open_editable_normal_mode = function(child, buf, timeout)
   Helpers.wait_for_modifiable(child, buf, timeout)
 end
 
-Helpers.wait_for_shell_output = function(child, buf, expected, timeout)
+Helpers.wait_for_shell_output = function(child, buf, expected, timeout, prompt_pattern)
   local output
   local text
+  prompt_pattern = prompt_pattern or "%$ "
   local ok = pcall(function()
     Helpers.wait_until(child, function()
       text = child.lua_get(
         [[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]],
         { buf }
       )
-      output = text:match("%$ [^\n]*\n([^\n]+)")
+      output = text:match(prompt_pattern .. "[^\n]*\n([^\n]+)")
       return output == expected
     end, timeout)
   end)

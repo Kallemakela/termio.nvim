@@ -12,15 +12,18 @@ end
 function M.get(buf)
   local editable = require("termio.editors.editable")
   local target_buf = current_buf(buf)
-  local bufinfo = editable.buffers and editable.buffers[target_buf]
-  local prompt_cursor = bufinfo and bufinfo.promt_cursor or nil
-  if not prompt_cursor then
+  local zone = editable.get_editable_zone(target_buf)
+  if not zone then
     return nil
   end
-  local start_row, start_col = unpack(prompt_cursor)
   local end_row = vim.api.nvim_buf_line_count(target_buf)
   local line = vim.api.nvim_buf_get_lines(target_buf, end_row - 1, end_row, false)[1] or ""
-  return { start_row = start_row, start_col = start_col, end_row = end_row, end_col = #line }
+  return {
+    start_row = zone.start_row,
+    start_col = zone.start_col,
+    end_row = end_row,
+    end_col = #line,
+  }
 end
 
 ---@param buf? integer

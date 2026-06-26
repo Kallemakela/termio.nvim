@@ -27,7 +27,7 @@ BLOCKED, can't insert in terminal buffer without sending chars to shell.
 
 ### Open draft edit
 - Only allow when cursor is on current prompt row
-- Read shell state with existing `api.read_command(buf)` and `api.command_cursor(win, buf)`
+- Read shell state with existing `api.read_command(buf)` and `api.cursor_index_in_command(win, buf)`
 - Copy shell state into draft state
 - Make terminal buffer temporarily `modifiable`
 

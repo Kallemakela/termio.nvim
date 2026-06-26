@@ -13,6 +13,18 @@ T = MiniTest.new_set({
 
 T["read_command()"] = MiniTest.new_set()
 
+local function open_python_repl()
+  if child.fn.executable("python3") == 0 then
+    MiniTest.skip("python3 is not executable")
+  end
+  child.cmd("terminal python3 -q")
+  local buf = child.api.nvim_get_current_buf()
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_current_line():match("^>>>%s*$") ~= nil
+  end)
+  return buf
+end
+
 T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   local prompt = "$ "
   local buf = Helpers.open_shell(child, prompt)
@@ -42,6 +54,18 @@ T["read_command()"]["applies configured read strip patterns"] = function()
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo keep   ")
   Helpers.wait_for_read_command(child, buf, "echo keep")
+end
+
+T["read_command()"]["detects default Python REPL prompt regex"] = function()
+  local buf = open_python_repl()
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("1 + 1")
+  Helpers.wait_for_read_command(child, buf, "1 + 1")
+  MiniTest.expect.equality(
+    child.lua_get([[require("termio").command_start_cursor(...)]], { buf }),
+    { 1, 4 }
+  )
 end
 
 T["write_command()"] = MiniTest.new_set()

@@ -3,7 +3,6 @@ local config = require("termio.config")
 local chan_send_api = require("termio.chan_send_api")
 local helpers = require("termio.util.helpers")
 local shell_integration = require("termio.shell_integration")
-local live_terminal_buffer = require("termio.live_terminal_buffer")
 
 shell_integration.use_buffers(M.buffers)
 chan_send_api.use_buffers(M.buffers)
@@ -63,14 +62,6 @@ function M.write_command(command, buf, cursor, io_backend)
   local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
   current_io_api(io_backend).write_command(target, shell_command, shell_cursor)
-end
-
----@param win integer
----@param buf integer
----@return integer[]
-function M.command_cursor(win, buf)
-  local _, prompt_end_cursor = live_terminal_buffer.prompt_range(M.buffers, buf)
-  return live_terminal_buffer.command_cursor(win, buf, prompt_end_cursor)
 end
 
 return M

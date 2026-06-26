@@ -39,11 +39,14 @@ end
 ---@param win? integer
 ---@return { command: string, cursor: integer? }
 function M.read_state(buf, win)
-  local _, prompt_end_cursor = live_terminal_buffer.prompt_range(buffers, buf)
+  live_terminal_buffer.update_prompt_cursors_from_patterns(buffers, buf, win)
+  local _, prompt_end_cursor = live_terminal_buffer.prompt_range(buffers, buf, win)
   local command = live_terminal_buffer.command_text(buf, prompt_end_cursor, true)
   local state = helpers.ensure_buffer_state(buffers, buf)
   win = win or visible_window(buf)
-  local cursor = win and live_terminal_buffer.command_cursor(win, buf, prompt_end_cursor)[2] or nil
+  local cursor = win
+      and live_terminal_buffer.cursor_index_from_start_cursor(win, buf, prompt_end_cursor)
+    or nil
   command = helpers.strip_patterns(command, config.options.read_strip_patterns)
   state.shell_state.command = command
   state.shell_state.cursor = cursor
@@ -55,11 +58,15 @@ end
 ---@param command string
 ---@param cursor integer
 function M.write_command(buf, command, cursor)
+  local state = helpers.ensure_buffer_state(buffers, buf)
+  local win = visible_window(buf)
+  local uses_shell_prompt = live_terminal_buffer.uses_shell_integration_prompt(buffers, buf, win)
   helpers.send_keys("<C-e><C-u>", buf)
   helpers.send_bytes("\27[200~" .. command .. "\27[201~", buf)
   move_shell_cursor(buf, cursor, command)
-  local state = helpers.ensure_buffer_state(buffers, buf)
-  shell_integration.redraw_after_pty_write(buf)
+  if uses_shell_prompt then
+    shell_integration.redraw_after_pty_write(buf)
+  end
   state.shell_state.command = command
   state.shell_state.cursor = cursor
 end

@@ -90,6 +90,8 @@ Defaults live in `lua/termio/config.lua`.
 require("termio").setup({
   -- "auto" currently uses PTY IO. "fifo" is experimental.
   io_backend = "auto", -- "auto" | "pty" | "fifo"
+  -- Vim regexes. Command text starts after the matched prompt.
+  prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   editor = {
@@ -209,10 +211,17 @@ termio.nvim/
 
 ## REPLs
 
-`termio.nvim` uses OSC133 markers to detect where the prompt ends and the
-editable command starts. Shell integrations add these markers to shell prompts.
+`termio.nvim` uses OSC133 markers or configured prompt regexes to detect where
+the prompt ends and the editable command starts. 
 
-For REPLs, add the same markers to the REPL prompt. Example for python:
+### Example: Python REPL
+
+Add these to prompt patterns:
+```lua
+prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
+```
+
+Or, add OSC133 markers to the REPL prompt. Example for python:
 
 ```sh
 # ~/.zshrc

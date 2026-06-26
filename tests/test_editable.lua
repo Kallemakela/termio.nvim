@@ -14,6 +14,8 @@ T = MiniTest.new_set({
 
 T["editable edit"] = MiniTest.new_set()
 
+T["editable repl"] = MiniTest.new_set()
+
 T["editable keymaps"] = MiniTest.new_set()
 
 T["editable keymaps"]["skips terminal names outside allowlist"] = function()
@@ -34,9 +36,9 @@ T["editable keymaps"]["allows configured terminal name pattern"] = function()
   MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), true)
 end
 
-local function get_command_cursor(buf)
+local function get_cursor_index_in_command(buf)
   local win = child.api.nvim_get_current_win()
-  return child.lua_get([=[require("termio.api").command_cursor(...)[2]]=], { win, buf })
+  return child.lua_get([=[require("termio").cursor_index_in_command(...)]=], { win, buf })
 end
 
 local function read_editable_command(buf)
@@ -44,6 +46,32 @@ local function read_editable_command(buf)
     [[require("termio.editors.editable").read_command_from_buffer(...)]],
     { buf }
   )
+end
+
+local function open_python_repl(opts)
+  opts = opts or {}
+  if child.fn.executable("python3") == 0 then
+    MiniTest.skip("python3 is not executable")
+  end
+  local buf
+  if opts.nested_shell then
+    buf = Helpers.open_shell(child)
+    child.api.nvim_input("i")
+    Helpers.wait_for_mode(child, "t")
+    child.api.nvim_input("python3 -q<CR>")
+  else
+    Helpers.setup_child(
+      child,
+      [=[{ editor = { type = "editable", terminal_name_pattern = [[python3]] } }]=]
+    )
+    child.set_size(24, 80)
+    child.cmd("terminal python3 -q")
+    buf = child.api.nvim_get_current_buf()
+  end
+  Helpers.wait_until(child, function()
+    return child.api.nvim_get_current_line():match("^>>>%s*$") ~= nil
+  end)
+  return buf
 end
 
 T["editable edit"]["open key leaves terminal mode"] = function()
@@ -116,10 +144,32 @@ T["editable edit"]["normal insert keys do nothing when disabled"] = function()
   child.wait(100)
   Helpers.expect.no_match(
     child.lua_get([[vim.api.nvim_exec2("messages", { output = true }).output]]),
-    "prompt_cursor"
+    "command_start_cursor"
   )
   MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
   MiniTest.expect.equality(child.api.nvim_get_current_buf(), buf)
+end
+
+T["editable repl"]["edits and submits Python command"] = function()
+  local buf = open_python_repl()
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("3 + 4")
+  Helpers.wait_for_read_command(child, buf, "3 + 4")
+  child.api.nvim_input("<CR>")
+  Helpers.wait_for_shell_output(child, buf, "7", nil, ">>> ")
+end
+
+T["editable repl"]["edits nested Python command"] = function()
+  local buf = open_python_repl({ nested_shell = true })
+  child.api.nvim_input("print('hello world again')")
+  Helpers.wait_for_read_command(child, buf, "print('hello world again')")
+  child.api.nvim_input("<Esc>BBcw")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("goodbye ")
+  Helpers.wait_for_read_command(child, buf, "print('hello goodbye again')")
+  child.api.nvim_input("<CR>")
+  Helpers.wait_for_shell_output(child, buf, "hello goodbye again", nil, ">>> ")
 end
 
 T["editable edit"]["open stores current shell state"] = function()
@@ -147,7 +197,7 @@ T["editable edit"]["open keeps cursor at command end"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   Helpers.open_editable_normal_mode(child, buf)
   Helpers.wait_until(child, function()
-    return get_command_cursor(buf) == 15
+    return get_cursor_index_in_command(buf) == 15
   end)
 end
 
@@ -159,7 +209,7 @@ T["editable edit"]["open keeps cursor on wrapped command end"] = function()
   child.api.nvim_input(command)
   Helpers.wait_for_read_command(child, buf, command)
   Helpers.open_editable_normal_mode(child, buf)
-  MiniTest.expect.equality(get_command_cursor(buf), #command - 1)
+  MiniTest.expect.equality(get_cursor_index_in_command(buf), #command - 1)
   MiniTest.expect.equality(child.api.nvim_win_get_cursor(0)[1] > 1, true)
 end
 
@@ -173,7 +223,7 @@ T["editable edit"]["open keeps cursor inside command"] = function()
   Helpers.wait_for_read_command(child, buf, "echo hello world")
   Helpers.open_editable_normal_mode(child, buf)
   Helpers.wait_until(child, function()
-    return get_command_cursor(buf) == 12
+    return get_cursor_index_in_command(buf) == 12
   end)
 end
 
@@ -330,7 +380,7 @@ T["editable edit"]["0 moves to wrapped command start"] = function()
   child.api.nvim_input("[[WW")
   child.api.nvim_input("0")
   Helpers.wait_until(child, function()
-    return get_command_cursor(buf) == 0
+    return get_cursor_index_in_command(buf) == 0
   end)
 end
 
@@ -345,7 +395,7 @@ T["editable edit"]["$ moves to wrapped command end"] = function()
   child.api.nvim_input("[[WW")
   child.api.nvim_input("$")
   Helpers.wait_until(child, function()
-    return get_command_cursor(buf) == #command - 1
+    return get_cursor_index_in_command(buf) == #command - 1
   end)
 end
 
@@ -360,7 +410,7 @@ T["editable edit"]["^ moves to wrapped command start"] = function()
   child.api.nvim_input("[[WW")
   child.api.nvim_input("^")
   Helpers.wait_until(child, function()
-    return get_command_cursor(buf) == 0
+    return get_cursor_index_in_command(buf) == 0
   end)
 end
 
@@ -451,11 +501,11 @@ T["editable edit"]["yy yanks wrapped command"] = function()
   Helpers.wait_for_read_command(child, buf, command)
   Helpers.open_editable_normal_mode(child, buf)
   child.api.nvim_input("[[WW")
-  local cursor = get_command_cursor(buf)
+  local cursor = get_cursor_index_in_command(buf)
   child.api.nvim_input("yy")
   MiniTest.expect.equality(child.fn.getreg('"'), command .. "\n")
   MiniTest.expect.equality(child.fn.getregtype('"'), "V")
-  MiniTest.expect.equality(get_command_cursor(buf), cursor)
+  MiniTest.expect.equality(get_cursor_index_in_command(buf), cursor)
 end
 
 T["editable edit"]["bbved deletes visual selection from editor draft"] = function()
@@ -698,7 +748,7 @@ end
 --   for _, step in ipairs(expected_steps) do
 --     child.api.nvim_input(step.keys)
 --     Helpers.wait_for_read_command(child, buf, step.command)
---     MiniTest.expect.equality(get_command_cursor(buf), step.cursor)
+--     MiniTest.expect.equality(get_cursor_index_in_command(buf), step.cursor)
 --     child.wait(120)
 --   end
 --   child.api.nvim_input("a")
