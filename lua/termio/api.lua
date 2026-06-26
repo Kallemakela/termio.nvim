@@ -1,11 +1,11 @@
 local M = { buffers = {} }
 local config = require("termio.config")
-local chan_send_api = require("termio.chan_send_api")
 local helpers = require("termio.util.helpers")
+local pty_api = require("termio.pty_api")
 local shell_integration = require("termio.shell_integration")
 
 shell_integration.use_buffers(M.buffers)
-chan_send_api.use_buffers(M.buffers)
+pty_api.use_buffers(M.buffers)
 
 local function current_io_api(io_backend)
   io_backend = io_backend or config.options.io_backend
@@ -13,7 +13,7 @@ local function current_io_api(io_backend)
     return shell_integration
   end
   if io_backend == "auto" or io_backend == "pty" then
-    return chan_send_api
+    return pty_api
   end
   error("termio: config.io_backend must be 'auto', 'pty', or 'fifo'")
 end
