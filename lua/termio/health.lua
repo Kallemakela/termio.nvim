@@ -1,6 +1,6 @@
 local api = require("termio.api")
 local config = require("termio.config")
-local shell_integration = require("termio.shell_integration")
+local shell_state = require("termio.shell_state")
 
 local M = {}
 
@@ -10,8 +10,6 @@ local required_markers = {
   { name = "OSC 133;C", pattern = "^\27]133;C" },
   { name = "OSC 133;D", pattern = "^\27]133;D" },
   { name = "OSC 633;I", pattern = "^\27]633;I" },
-  { name = "OSC 633;Q", pattern = "^\27]633;Q" },
-  { name = "OSC 633;W", pattern = "^\27]633;W" },
 }
 
 local function report()
@@ -63,7 +61,6 @@ function M.check_markers(opts)
   local buf = vim.api.nvim_create_buf(false, true)
   local sequences = {}
   local errors = {}
-  shell_integration.use_buffers(api.buffers)
 
   local group = vim.api.nvim_create_augroup("termio-health-marker-check", { clear = true })
   vim.api.nvim_create_autocmd("TermRequest", {
@@ -71,7 +68,7 @@ function M.check_markers(opts)
     buffer = buf,
     callback = function(args)
       table.insert(sequences, args.data.sequence)
-      shell_integration.handle_term_request(args)
+      shell_state.handle_term_request(api.buffers, args)
     end,
   })
 
@@ -80,7 +77,7 @@ function M.check_markers(opts)
   end)
   wait_until(timeout_ms, function()
     return api.buffers[buf]
-      and api.buffers[buf].shell_fifo_path ~= nil
+      and api.buffers[buf].shell_integration ~= nil
       and api.buffers[buf].prompt_end_cursor ~= nil
   end)
 

@@ -3,7 +3,7 @@ local api = require("termio.api")
 local helpers = require("termio.util.helpers")
 local log = require("termio.util.log")
 local state = require("termio.state")
-local live_terminal_buffer = require("termio.live_terminal_buffer")
+local terminal_buffer = require("termio.terminal_buffer")
 local M = {}
 local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
 local YANK_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_yank_operator"
@@ -28,7 +28,7 @@ local function set_sync_block_reason(buf, reason)
 end
 
 local function command_start_cursor(buf)
-  local _, prompt_end_cursor = live_terminal_buffer.get_prompt_range(api.buffers, buf)
+  local _, prompt_end_cursor = terminal_buffer.get_prompt_range(api.buffers, buf)
   return prompt_end_cursor
 end
 
@@ -36,13 +36,13 @@ end
 ---@param buf integer
 ---@return string
 function M.read_command_from_buffer(buf)
-  return live_terminal_buffer.command_text(buf, command_start_cursor(buf))
+  return terminal_buffer.command_text(buf, command_start_cursor(buf))
 end
 
 local function read_editor_state(buf, win)
   return {
     command = M.read_command_from_buffer(buf),
-    cursor = live_terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
+    cursor = terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
   }
 end
 
@@ -89,7 +89,7 @@ end
 ---@param offset integer offset from prompt end
 ---@return integer[] cursor 1-based row, 0-based column
 local function get_buffer_location_from_shell_offset(buf, offset)
-  return live_terminal_buffer.location_from_offset(buf, command_start_cursor(buf), offset)
+  return terminal_buffer.location_from_offset(buf, command_start_cursor(buf), offset)
 end
 
 ---Return the editable command zone in the terminal buffer.
@@ -103,7 +103,7 @@ function M.get_editable_zone(buf)
   end
   local start_row, start_col = unpack(cursor)
   local end_cursor =
-    live_terminal_buffer.location_from_offset(target, cursor, #M.read_command_from_buffer(target))
+    terminal_buffer.location_from_offset(target, cursor, #M.read_command_from_buffer(target))
   return {
     start_row = start_row,
     start_col = start_col,
@@ -526,7 +526,7 @@ function M.open(ctx)
     return false
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
-  live_terminal_buffer.update_prompt_cursors_from_patterns(api.buffers, buf, win)
+  terminal_buffer.update_prompt_cursors_from_patterns(api.buffers, buf, win)
   vim.cmd("stopinsert")
   wait_for_terminal_leave(buf)
   buffer_state.shell_state = api.read_state(buf, win)

@@ -33,42 +33,6 @@ T["shell integration"]["test write command replaces zsh buffer directly"] = func
   Helpers.wait_for_read_command(child, buf, "echo replacement")
 end
 
-T["shell integration"]["test shell integration announces fifo path"] = function()
-  local buf = Helpers.open_shell(child)
-  Helpers.wait_until(child, function()
-    local path = child.lua_get([[require("termio.api").buffers[...].shell_fifo_path]], { buf })
-    return type(path) == "string" and path:match("termio%.nvim%.%d+%.fifo$") ~= nil
-  end)
-end
-
-T["shell integration"]["test fifo frame writes zsh buffer"] = function()
-  local buf = Helpers.open_shell(child)
-  child.lua([[require("termio").write_command("echo fifo", ...)]], { buf })
-  Helpers.wait_for_read_command(child, buf, "echo fifo")
-end
-
-T["shell integration"]["test fifo write surfaces write error"] = function()
-  if vim.env.TERMIO_TEST_IO_BACKEND ~= "fifo" then
-    MiniTest.skip("requires fifo io backend")
-  end
-  local buf = Helpers.open_shell(child)
-  child.lua(
-    [[
-      local api = require("termio")
-      local original_write = vim.uv.fs_write
-      _G.termio_write_error = nil
-      vim.uv.fs_write = function()
-        error("boom")
-      end
-      local ok, err = pcall(api.write_command, "echo replacement", ...)
-      vim.uv.fs_write = original_write
-      _G.termio_write_error = ok and nil or err
-    ]],
-    { buf }
-  )
-  MiniTest.expect.equality(child.lua_get("_G.termio_write_error:match('boom') ~= nil"), true)
-end
-
 T["shell integration"]["test shell write verifies long zsh buffer"] = function()
   local buf = Helpers.open_shell(child)
   local command = Helpers.lorem_command(545)

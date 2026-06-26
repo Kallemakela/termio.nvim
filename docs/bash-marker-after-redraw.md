@@ -1,6 +1,6 @@
 # Bash Marker After Redraw
 
-`termio.nvim` wakes bash readline through `bind -x` so bash can read FIFO actions and report or update `READLINE_LINE`.
+`termio.nvim` used to wake bash readline through `bind -x` for shell-side actions.
 
 Observed failure:
 
@@ -36,4 +36,4 @@ There is no check for whether readline state changed. A marker-only `bind -x` ha
 - A marker printed by a `bind -x` handler appears before Bash's post-handler redraw.
 - `OSC 133;B` from `PS1` appears before readline writes the command text.
 - Control bytes inside `READLINE_LINE` are displayed as printable notation, e.g. `^[]633;R^G`, not emitted as raw OSC.
-- Current FIFO loop can consume `write` and `ready` in the same wake, before any redraw, because it drains frames with `read -t 0.01`.
+- A `bind -x` wake can still force a redraw even when no readline state changes.

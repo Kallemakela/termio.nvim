@@ -88,8 +88,6 @@ Defaults live in `lua/termio/config.lua`.
 
 ```lua
 require("termio").setup({
-  -- "auto" currently uses PTY IO. "fifo" is experimental.
-  io_backend = "auto", -- "auto" | "pty" | "fifo"
   -- Vim regexes. Command text starts after the matched prompt.
   prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_strip_patterns = {},
@@ -183,14 +181,13 @@ termio.nvim/
 │   ├── api.lua                  public read/write API
 │   ├── commands.lua             user commands
 │   ├── health.lua               :checkhealth termio checks
-│   ├── live_terminal_buffer.lua terminal-buffer state tracking
-│   ├── chan_send_api.lua        nvim_chan_send backend
+│   ├── terminal_buffer.lua      terminal-buffer reads and cursor math
 │   ├── state.lua                plugin state
-│   ├── shell_state.lua          shell prompt and command state
+│   ├── shell_state.lua          OSC marker state updates
 │   ├── editors/                 bundled terminal-buffer editors
 │   │   └── editable.lua         default editable-buffer editor
-│   ├── shell_integration/       shell-backed API implementation
-│   │   ├── init.lua             shell integration api
+│   ├── shell_integration/       shell marker and key-hook integration
+│   │   ├── init.lua             shell integration dispatch
 │   │   ├── zsh.lua              zsh integration
 │   │   ├── bash.lua             bash integration
 │   │   └── fish.lua             fish integration
@@ -208,6 +205,18 @@ termio.nvim/
 ├── run_filtered_tests.sh        focused test runner
 └── Makefile                     all-test entrypoint
 ```
+
+## How the api works.
+
+#### `read`
+- reads command text from the terminal buffer after the current prompt marker.
+- prompt markers come from OSC 133 shell integration or configured prompt regexes.
+- if extra rows appear after the prompt, asks the shell hook to clear transient completion UI and rereads the buffer.
+
+#### `write`
+- clear the command by sending C-e C-u to the shell process, then sending the command inside bracketed paste.
+- move the cursor by sending arrow keys to the shell.
+- shell hooks redraw or clear completion UI when available; command transport is always PTY input.
 
 ## REPLs
 
@@ -245,7 +254,7 @@ Check that prompt is as expected:
 ```
 
 > [!NOTE]
-> REPLs should use the PTY backend, because they do not expose the shell FIFO.
+> REPLs use prompt regexes when OSC 133 shell markers are not available.
 
 ## [Known issues/Planned features/Roadmap/TODO](./docs/todo.md)
 

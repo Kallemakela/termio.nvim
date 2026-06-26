@@ -48,11 +48,11 @@ end
 
 local function read_buffer_state(buf, win)
   local api = get_api()
-  local live_terminal_buffer = require("termio.live_terminal_buffer")
+  local terminal_buffer = require("termio.terminal_buffer")
   local command_state = get_helpers().ensure_buffer_state(api.buffers, buf).shell_state
   return {
     command = command_state.command,
-    cursor = live_terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
+    cursor = terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
   }
 end
 
@@ -106,7 +106,6 @@ function M.collect()
     target.active = true
   end
   return {
-    io_backend = options.io_backend,
     terminal = terminal,
     shell = shell,
     target = target,
@@ -117,9 +116,8 @@ end
 function M.render_lines(snapshot)
   return {
     string.format(
-      "target: type=%s io=%s active=%s mode=%s term=%s/%s/%s buf=%s win=%s",
+      "target: type=%s active=%s mode=%s term=%s/%s/%s buf=%s win=%s",
       snapshot.target.type or "-",
-      snapshot.io_backend or "-",
       tostring(snapshot.target.active),
       vim.api.nvim_get_mode().mode,
       snapshot.terminal.buf or "-",

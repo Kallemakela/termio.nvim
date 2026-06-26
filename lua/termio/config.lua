@@ -1,18 +1,11 @@
 local M = {}
 
 M.defaults = {
-  io_backend = "auto",
   prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   timeouts = {
-    -- Poll for shell integration to publish its FIFO after terminal startup.
-    fifo_ready = { limit_ms = 50, interval_ms = 2 },
-    -- Poll for a shell query reply before read_command() fails.
-    read_command = { limit_ms = 50, interval_ms = 2 },
-    -- Poll for a shell write acknowledgement before write_command() fails.
-    write_command = { limit_ms = 50, interval_ms = 2 },
-    -- Poll for terminal buffer render to catch up to shell query result.
+    -- Poll for terminal buffer render to catch up to writes.
     render_command = { limit_ms = 50, interval_ms = 2 },
     -- Poll for :stopinsert to finish leaving terminal mode.
     terminal_leave = { limit_ms = 10, interval_ms = 1 },

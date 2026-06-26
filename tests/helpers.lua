@@ -213,13 +213,10 @@ Helpers.setup_child = function(child, setup)
   child.lua(string.format(
     [[
       require("termio").setup(vim.tbl_deep_extend("force", {
-        io_backend = vim.env.TERMIO_TEST_IO_BACKEND or "auto",
         debug = true,
-        -- TODO: Inspect why headless test shells need much larger FIFO roundtrip timeouts.
         timeouts = {
-          fifo_ready = { limit_ms = 500, interval_ms = 10 },
-          read_command = { limit_ms = 500, interval_ms = 10 },
-          write_command = { limit_ms = 500, interval_ms = 10 },
+          -- TODO: Inspect why headless tests need a larger render timeout.
+          render_command = { limit_ms = 500, interval_ms = 10 },
         },
       }, %s))
     ]],
@@ -274,7 +271,7 @@ end
 
 Helpers.wait_for_shell_integration = function(child, buf, timeout)
   Helpers.wait_until(child, function()
-    return child.lua_get([[require("termio.api").buffers[...].shell_fifo_path ~= nil]], { buf })
+    return child.lua_get([[require("termio.api").buffers[...].shell_integration ~= nil]], { buf })
   end, timeout)
 end
 

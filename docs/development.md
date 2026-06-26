@@ -6,7 +6,6 @@ Recommended for testing. Uses a minimal config without other plugins etc.
 
 ```sh
 sh ./dev/run.sh --debug --words 300
-sh ./dev/run.sh --debug --io-backend fifo
 SHELL=/opt/homebrew/bin/bash
 ```
 
@@ -14,7 +13,6 @@ Debug output: `./tmp/dev.out`.
 
 #### Args
 - `--debug`: write Neovim verbose output and termio debug logs to `./tmp/dev.out`.
-- `--io-backend auto|pty|fifo`: choose command IO backend. `auto` uses PTY IO; `fifo` is experimental.
 - `--words N`: prefill the terminal with a lorem command of `N` words.
 - `--multi`: split the prefilled command over multiple shell lines.
 - `--headless`: run without UI, then quit.
@@ -53,8 +51,6 @@ Run all tests:
 ```sh
 make test
 make test-bash
-make test-pty
-make test-fifo
 make test-fish
 ```
 
@@ -63,6 +59,5 @@ Tests write debug output to `./tmp/test.out`.
 Env vars:
 
 - `TERMIO_TEST_SHELL=(bash|fish|zsh)`
-- `TERMIO_TEST_IO_BACKEND=(auto|pty|fifo)`
 
 Read some existing tests before writing new ones. Testing requires a lot of quirks since almost everything is async when working with the terminal.

@@ -77,7 +77,7 @@ function M.can_send_shell_integration_signal(buffers, buf, win)
   return helpers.ensure_buffer_state(buffers, buf).active_prompt_source ~= "regex"
 end
 
----Return prompt range for a live terminal buffer.
+---Return prompt range for a terminal buffer.
 ---@param buffers table<integer, table>
 ---@param buf integer
 ---@param win? integer
@@ -106,7 +106,7 @@ function M.command_start_cursor(buffers, buf, win)
   return prompt_end_cursor
 end
 
----Read command rows from a live terminal buffer after start_cursor.
+---Read command rows from a terminal buffer after start_cursor.
 ---@param buf integer
 ---@param start_cursor integer[]
 ---@param stop_at_blank? boolean
@@ -127,7 +127,7 @@ function M.command_rows(buf, start_cursor, stop_at_blank)
   return rows
 end
 
----Read command text from a live terminal buffer after start_cursor.
+---Read command text from a terminal buffer after start_cursor.
 ---@param buf integer
 ---@param start_cursor integer[]
 ---@param stop_at_blank? boolean
@@ -136,7 +136,7 @@ function M.command_text(buf, start_cursor, stop_at_blank)
   return table.concat(M.command_rows(buf, start_cursor, stop_at_blank), "")
 end
 
----Return the cursor byte index inside command text for a live terminal window.
+---Return the cursor byte index inside command text for a terminal window.
 ---@param win integer
 ---@param buf integer
 ---@param start_cursor integer[]
@@ -170,7 +170,7 @@ function M.cursor_index_in_command(buffers, win, buf)
   return M.cursor_index_from_start_cursor(win, target, M.command_start_cursor(buffers, target, win))
 end
 
----Convert a command-text byte offset back to a live terminal buffer cursor.
+---Convert a command-text byte offset back to a terminal buffer cursor.
 ---Terminal buffers may contain blank/padded cells after the prompt line. This
 ---walks forward by command bytes, so command zones end at command text, not at
 ---the terminal buffer edge.

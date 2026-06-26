@@ -78,15 +78,4 @@ T["write_command()"]["empty command after cursor stays empty"] = function()
   Helpers.wait_for_read_command(child, buf, "")
 end
 
-T["pty io backend"] = MiniTest.new_set()
-
-T["pty io backend"]["writes through terminal channel"] = function()
-  child.lua([[require("termio.config").options.io_backend = "pty"]])
-  local buf = Helpers.open_shell(child)
-  child.api.nvim_input("i")
-  Helpers.wait_for_mode(child, "t")
-  child.lua([[require("termio").write_command("echo chan", ...)]], { buf })
-  Helpers.wait_for_read_command(child, buf, "echo chan")
-end
-
 return T

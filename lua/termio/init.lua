@@ -1,7 +1,7 @@
 local api = require("termio.api")
 local config = require("termio.config")
 local commands = require("termio.commands")
-local live_terminal_buffer = require("termio.live_terminal_buffer")
+local terminal_buffer = require("termio.terminal_buffer")
 local shell_state = require("termio.shell_state")
 local state = require("termio.state")
 
@@ -14,10 +14,10 @@ local M = {
   prompt_range = api.prompt_range,
   write_command = api.write_command,
   command_start_cursor = function(buf, win)
-    return live_terminal_buffer.command_start_cursor(api.buffers, buf, win)
+    return terminal_buffer.command_start_cursor(api.buffers, buf, win)
   end,
   cursor_index_in_command = function(win, buf)
-    return live_terminal_buffer.cursor_index_in_command(api.buffers, win, buf)
+    return terminal_buffer.cursor_index_in_command(api.buffers, win, buf)
   end,
 }
 

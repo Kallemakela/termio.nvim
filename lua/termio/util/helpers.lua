@@ -80,6 +80,13 @@ function M.current_buf(buf)
 end
 
 ---@param buf integer
+---@return integer?
+function M.visible_window(buf)
+  local win = vim.fn.bufwinid(buf)
+  return win ~= -1 and win or nil
+end
+
+---@param buf integer
 ---@return boolean
 function M.is_enabled_terminal(buf)
   if vim.bo[buf].buftype ~= "terminal" then
@@ -126,7 +133,8 @@ function M.ensure_buffer_state(buffers, buf)
       active_prompt_process = nil,
       terminal_title = nil,
       shell_phase = nil,
-      shell_fifo_path = nil,
+      shell_kind = nil,
+      shell_integration = nil,
       shell_state = { command = "", cursor = nil },
     }
   return buffers[buf]

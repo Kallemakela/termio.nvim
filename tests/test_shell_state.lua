@@ -35,12 +35,11 @@ T["OSC133 preexec clears active prompt"] = function()
   MiniTest.expect.equality(state.shell_phase, "output")
 end
 
-T["OSC633 query updates shell command state"] = function()
-  local state = state_for("\027]633;Q;3;abc\\x3bdef\007")
+T["OSC633 integration marker stores shell"] = function()
+  local state = state_for("\027]633;I;zsh\007")
 
-  MiniTest.expect.equality(state.shell_state, { command = "abc;def", cursor = 3 })
-  MiniTest.expect.equality(state.shell_query_pending, false)
-  MiniTest.expect.equality(state.shell_phase, "input")
+  MiniTest.expect.equality(state.shell_kind, "zsh")
+  MiniTest.expect.equality(state.shell_integration.kind, "zsh")
 end
 
 T["OSC title stores terminal title"] = function()

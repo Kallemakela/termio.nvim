@@ -3,17 +3,14 @@ local helpers = require("termio.util.helpers")
 local M = { kind = "zsh" }
 
 ---@param payload string
----@return string
-function M.parse_fifo_path(payload)
-  return payload
+---@return boolean
+function M.matches(payload)
+  return payload == "zsh"
 end
 
-function M.after_send_action() end
-
 ---@param buf integer
----@param send_shell_action fun(buf: integer, action: string, payload?: string)
-function M.clear_completion_suggestions(buf, send_shell_action)
-  send_shell_action(buf, "clear-completions", "")
+function M.clear_completion_suggestions(buf)
+  helpers.send_bytes("\27[27;5;67~", buf)
 end
 
 -- ZLE erases old command text by painting spaces. Redisplay repaints with ESC[K.

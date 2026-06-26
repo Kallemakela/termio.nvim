@@ -3,13 +3,6 @@ local shell_integration = require("termio.shell_integration")
 
 local M = {}
 
----@param value string
----@return string
-local function unescape_shell_payload(value)
-  value = value:gsub("\7$", ""):gsub("\27\\$", "")
-  return value:gsub("\\x3b", ";"):gsub("\\\\", "\\")
-end
-
 ---@param sequence string
 ---@return string?
 local function parse_title(sequence)
@@ -54,23 +47,10 @@ function M.handle_term_request(buffers, args)
     state.shell_state.cursor = nil
     return true
   end
-  local fifo_path, shell = shell_integration.parse_fifo_path(sequence)
-  if fifo_path then
-    state.shell_fifo_path = fifo_path
+  local shell = shell_integration.parse_shell(sequence)
+  if shell then
     state.shell_kind = shell.kind
     state.shell_integration = shell
-    return true
-  end
-  local cursor, command = sequence:match("^\27]633;Q;(%d+);(.*)")
-  if cursor then
-    state.shell_state.command = unescape_shell_payload(command)
-    state.shell_state.cursor = tonumber(cursor)
-    state.shell_phase = "input"
-    state.shell_query_pending = false
-    return true
-  end
-  if sequence:match("^\27]633;W") then
-    state.shell_write_pending = false
     return true
   end
   return false
