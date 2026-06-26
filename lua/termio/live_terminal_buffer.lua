@@ -67,12 +67,12 @@ function M.get_prompt_range(buffers, buf, win)
   return state.prompt_start_cursor, state.prompt_end_cursor
 end
 
----Needed to check we can use shell specific signals
+---Return whether shell integration signals are safe for the active prompt.
 ---@param buffers table<integer, table>
 ---@param buf integer
 ---@param win? integer
 ---@return boolean
-function M.uses_shell_integration_prompt(buffers, buf, win)
+function M.can_send_shell_integration_signal(buffers, buf, win)
   M.update_prompt_cursors_from_patterns(buffers, buf, win)
   return helpers.ensure_buffer_state(buffers, buf).active_prompt_source ~= "regex"
 end

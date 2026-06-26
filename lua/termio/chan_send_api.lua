@@ -60,11 +60,11 @@ end
 function M.write_command(buf, command, cursor)
   local state = helpers.ensure_buffer_state(buffers, buf)
   local win = visible_window(buf)
-  local uses_shell_prompt = live_terminal_buffer.uses_shell_integration_prompt(buffers, buf, win)
+  local can_signal_shell = live_terminal_buffer.can_send_shell_integration_signal(buffers, buf, win)
   helpers.send_keys("<C-e><C-u>", buf)
   helpers.send_bytes("\27[200~" .. command .. "\27[201~", buf)
   move_shell_cursor(buf, cursor, command)
-  if uses_shell_prompt then
+  if can_signal_shell then
     shell_integration.redraw_after_pty_write(buf)
   end
   state.shell_state.command = command
