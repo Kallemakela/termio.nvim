@@ -527,14 +527,10 @@ function M.open(ctx)
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   live_terminal_buffer.update_prompt_cursors_from_patterns(api.buffers, buf, win)
-  buffer_state.shell_state = api.read_state(buf, win)
-  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   vim.cmd("stopinsert")
   wait_for_terminal_leave(buf)
-  local ok, err = pcall(api.clear_completion_suggestions, buf)
-  if not ok then
-    log.debug("editable clear completions skipped", { buf = buf, error = err })
-  end
+  buffer_state.shell_state = api.read_state(buf, win)
+  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   wait_until_command_is_rendered(buf, buffer_state.shell_state.command)
   local cursor = vim.api.nvim_win_get_cursor(win)
   cursor = move_cursor_back_to_editable_zone(buf, cursor, win, buffer_state.shell_state.cursor)

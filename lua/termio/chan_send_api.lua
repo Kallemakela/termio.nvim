@@ -28,6 +28,18 @@ local function visible_window(buf)
   return win ~= -1 and win or nil
 end
 
+---@param buf integer
+---@param prompt_end_cursor integer[]
+---@return string
+local function command_text_without_completion_rows(buf, prompt_end_cursor)
+  local rows = live_terminal_buffer.command_rows(buf, prompt_end_cursor, true)
+  if #rows == 1 then
+    return rows[1]
+  end
+  M.clear_completion_suggestions(buf)
+  return live_terminal_buffer.command_text(buf, prompt_end_cursor, true)
+end
+
 ---Read the visible terminal command using OSC133 prompt markers.
 ---@param buf integer
 ---@return string
@@ -41,7 +53,7 @@ end
 function M.read_state(buf, win)
   live_terminal_buffer.update_prompt_cursors_from_patterns(buffers, buf, win)
   local _, prompt_end_cursor = live_terminal_buffer.prompt_range(buffers, buf, win)
-  local command = live_terminal_buffer.command_text(buf, prompt_end_cursor, true)
+  local command = command_text_without_completion_rows(buf, prompt_end_cursor)
   local state = helpers.ensure_buffer_state(buffers, buf)
   win = win or visible_window(buf)
   local cursor = win
@@ -71,6 +83,12 @@ function M.write_command(buf, command, cursor)
   state.shell_state.cursor = cursor
 end
 
-function M.clear_completion_suggestions() end
+---@param buf integer
+function M.clear_completion_suggestions(buf)
+  local state = helpers.ensure_buffer_state(buffers, buf)
+  if state.shell_integration then
+    shell_integration.clear_completion_suggestions(buf)
+  end
+end
 
 return M
