@@ -1,7 +1,6 @@
 local api = require("termio.api")
 local config = require("termio.config")
 local commands = require("termio.commands")
-local terminal_buffer = require("termio.terminal_buffer")
 local shell_state = require("termio.shell_state")
 local state = require("termio.state")
 
@@ -11,14 +10,11 @@ local M = {
   toggle = state.toggle,
   is_enabled = state.is_enabled,
   read_command = api.read_command,
+  update_prompt_range = api.update_prompt_range,
   prompt_range = api.prompt_range,
   write_command = api.write_command,
-  command_start_cursor = function(buf, win)
-    return terminal_buffer.command_start_cursor(api.buffers, buf, win)
-  end,
-  cursor_index_in_command = function(win, buf)
-    return terminal_buffer.cursor_index_in_command(api.buffers, win, buf)
-  end,
+  command_start_cursor = api.command_start_cursor,
+  cursor_index_in_command = api.cursor_index_in_command,
 }
 
 local function load_editor()

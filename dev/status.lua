@@ -48,11 +48,10 @@ end
 
 local function read_buffer_state(buf, win)
   local api = get_api()
-  local terminal_buffer = require("termio.terminal_buffer")
   local command_state = get_helpers().ensure_buffer_state(api.buffers, buf).shell_state
   return {
     command = command_state.command,
-    cursor = terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
+    cursor = api.cursor_index_in_command(win, buf),
   }
 end
 

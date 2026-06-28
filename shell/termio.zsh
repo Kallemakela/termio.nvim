@@ -17,10 +17,19 @@ termio_shell_redraw() {
   zle reset-prompt
 }
 
+termio_shell_read_state() {
+  printf '\e]633;E;%d;%s\a' "$CURSOR" "$BUFFER"
+}
+
 zle -N termio-clear-completions termio_shell_clear_completions
+zle -N termio-read-state termio_shell_read_state
 zle -N termio-redraw termio_shell_redraw
-bindkey $'\e[27;5;67~' termio-clear-completions
-bindkey $'\e[27;5;84~' termio-redraw
+for termio_keymap in emacs viins vicmd; do
+  bindkey -M "$termio_keymap" $'\e[27;5;67~' termio-clear-completions
+  bindkey -M "$termio_keymap" $'\C-x\C-r' termio-read-state
+  bindkey -M "$termio_keymap" $'\e[27;5;84~' termio-redraw
+done
+unset termio_keymap
 
 termio_shell_announce() {
   [[ -n ${TERMIO_SHELL_ANNOUNCED:-} ]] && return

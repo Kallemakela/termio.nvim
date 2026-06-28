@@ -4,6 +4,8 @@
 - Example: `ls<Tab>` shows matches below command in zsh.
 - In zsh ZLE, the real editable command is [`BUFFER`](https://zsh.sourceforge.io/Doc/Release/Zsh-Line-Editor.html#index-BUFFER), and [`PREDISPLAY`](https://zsh.sourceforge.io/Doc/Release/Zsh-Line-Editor.html#index-PREDISPLAY) / [`POSTDISPLAY`](https://zsh.sourceforge.io/Doc/Release/Zsh-Line-Editor.html#index-POSTDISPLAY) are display text outside the editable buffer.
 - I could not find terminal protocol markers for completion UI sections.
+- Buffer backend cannot reliably remove completions. Neovim stores terminal screen rows as buffer lines without libvterm `VTermLineInfo.continuation`, so a soft-wrapped command row can look identical to a completion row. `read_command(..., "buffer")` may include visible completions.
+- This might change if Neovim moves from libvterm to libghostty and exposes different wrapping/line-continuation behavior.
 
 ## Useful zsh fields
 

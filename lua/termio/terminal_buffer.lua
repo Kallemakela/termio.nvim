@@ -7,11 +7,11 @@ local function configured_prompt_patterns()
   return (config.options or config.defaults).prompt_patterns or {}
 end
 
-local function prompt_pattern_scan_start_row(buf, win)
-  if win and vim.api.nvim_win_is_valid(win) and vim.api.nvim_win_get_buf(win) == buf then
-    return vim.api.nvim_win_get_cursor(win)[1]
+local function prompt_pattern_scan_start_row(state)
+  if state.prompt_start_cursor then
+    return state.prompt_start_cursor[1] + 1
   end
-  return vim.api.nvim_buf_line_count(buf)
+  return 1
 end
 
 local function match_prompt(line)
@@ -33,14 +33,15 @@ end
 ---Update prompt start/end cursors from configured prompt regexes.
 ---@param buffers table<integer, table>
 ---@param buf? integer
----@param win? integer
 ---@return integer[]?, integer[]?
-function M.update_prompt_cursors_from_patterns(buffers, buf, win)
+function M.update_prompt_cursors_from_patterns(buffers, buf)
   if #configured_prompt_patterns() == 0 then
     return nil, nil
   end
   local state = helpers.ensure_buffer_state(buffers, buf)
-  for row = prompt_pattern_scan_start_row(buf, win), 1, -1 do
+  local top_row = prompt_pattern_scan_start_row(state)
+  local bottom_row = vim.api.nvim_buf_line_count(buf)
+  for row = bottom_row, top_row, -1 do
     local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
     local start_col, end_col = match_prompt(line)
     if start_col then
@@ -56,54 +57,13 @@ function M.update_prompt_cursors_from_patterns(buffers, buf, win)
   return nil, nil
 end
 
----Return cached or regex-detected prompt range, if available.
----@param buffers table<integer, table>
----@param buf integer
----@param win? integer
----@return integer[]?, integer[]?
-function M.get_prompt_range(buffers, buf, win)
-  M.update_prompt_cursors_from_patterns(buffers, buf, win)
-  local state = helpers.ensure_buffer_state(buffers, buf)
-  return state.prompt_start_cursor, state.prompt_end_cursor
-end
-
----Return whether shell integration signals are safe for the active prompt.
----@param buffers table<integer, table>
----@param buf integer
----@param win? integer
----@return boolean
-function M.can_send_shell_integration_signal(buffers, buf, win)
-  M.update_prompt_cursors_from_patterns(buffers, buf, win)
-  return helpers.ensure_buffer_state(buffers, buf).active_prompt_source ~= "regex"
-end
-
 ---Return prompt range for a terminal buffer.
 ---@param buffers table<integer, table>
 ---@param buf integer
----@param win? integer
----@return integer[], integer[]
-function M.prompt_range(buffers, buf, win)
+---@return integer[]?, integer[]?
+function M.prompt_range(buffers, buf)
   local state = helpers.ensure_buffer_state(buffers, buf)
-  if not state.prompt_start_cursor then
-    error("termio: missing prompt start cursor")
-  end
-  if not state.prompt_end_cursor then
-    error("termio: missing prompt end cursor")
-  end
   return state.prompt_start_cursor, state.prompt_end_cursor
-end
-
----Return the cursor where command text starts after the prompt.
----@param buffers table<integer, table>
----@param buf integer
----@param win? integer
----@return integer[] cursor 1-based row, 0-based column
-function M.command_start_cursor(buffers, buf, win)
-  local target = helpers.current_buf(buf)
-  helpers.assert_terminal(target)
-  M.update_prompt_cursors_from_patterns(buffers, target, win)
-  local _, prompt_end_cursor = M.prompt_range(buffers, target, win)
-  return prompt_end_cursor
 end
 
 ---Read command rows from a terminal buffer after start_cursor.
@@ -136,14 +96,60 @@ function M.command_text(buf, start_cursor, stop_at_blank)
   return table.concat(M.command_rows(buf, start_cursor, stop_at_blank), "")
 end
 
----Return the cursor byte index inside command text for a terminal window.
----@param win integer
+---Unreliable, used only to check if there might be completions currently
+---@param rows string[]
+---@param position? integer[] Position relative to rows. Rows before it are always command rows.
+---@return string[], string[]
+function M.split_completion_rows(rows, position)
+  -- Heuristics for completion UI detection:
+  -- 1. [USED] Current command row does not end in a newline, but the following line has text.
+  -- 2. [NOT USED] Following lines contain evenly spaced words.
+  local first_candidate = position and position[1] or 1
+  for command_end_row = first_candidate, #rows - 1 do
+    local next_row = rows[command_end_row + 1]
+    local next_row_has_text = next_row and next_row:find("%S") ~= nil
+    if not next_row_has_text then
+      return rows, {}
+    end
+    local current_row_ends_with_newline = rows[command_end_row]:sub(-1) == "\n"
+    if not current_row_ends_with_newline then
+      return vim.list_slice(rows, 1, command_end_row), vim.list_slice(rows, command_end_row + 1)
+    end
+  end
+  return rows, {}
+end
+
+---@param rows string[]
+---@return boolean
+function M.maybe_has_completions(rows)
+  -- Unreliable for wrapped commands; kept only as a best-effort helper.
+  local _, completion_rows = M.split_completion_rows(rows)
+  return #completion_rows > 0
+end
+
+---@param buffers table<integer, table>
+---@param buf integer
+---@param win integer?
+---@param prompt_end_cursor integer[]
+---@return { command: string, cursor: integer? }
+function M.read_state(buffers, buf, win, prompt_end_cursor)
+  local rows = M.command_rows(buf, prompt_end_cursor, true)
+  local state = helpers.ensure_buffer_state(buffers, buf)
+  local command = table.concat(rows, "")
+  local cursor = win and vim.api.nvim_win_get_cursor(win) or nil
+  cursor = cursor and M.cursor_index_from_start_cursor(cursor, buf, prompt_end_cursor) or nil
+  state.shell_state.command = helpers.strip_patterns(command, config.options.read_strip_patterns)
+  state.shell_state.cursor = cursor
+  return vim.deepcopy(state.shell_state)
+end
+
+---Return the cursor byte index inside command text.
+---@param cursor integer[]
 ---@param buf integer
 ---@param start_cursor integer[]
 ---@return integer
-function M.cursor_index_from_start_cursor(win, buf, start_cursor)
+function M.cursor_index_from_start_cursor(cursor, buf, start_cursor)
   local row, start_col = unpack(start_cursor)
-  local cursor = vim.api.nvim_win_get_cursor(win)
   local command_col = 0
   for index = row, cursor[1] do
     local line = vim.api.nvim_buf_get_lines(buf, index - 1, index, false)[1] or ""
@@ -157,17 +163,6 @@ function M.cursor_index_from_start_cursor(win, buf, start_cursor)
     command_col = command_col + #line
   end
   return command_col
-end
-
----Return current cursor byte index inside command text.
----@param buffers table<integer, table>
----@param win integer
----@param buf? integer
----@return integer
-function M.cursor_index_in_command(buffers, win, buf)
-  local target = helpers.current_buf(buf)
-  helpers.assert_terminal(target)
-  return M.cursor_index_from_start_cursor(win, target, M.command_start_cursor(buffers, target, win))
 end
 
 ---Convert a command-text byte offset back to a terminal buffer cursor.

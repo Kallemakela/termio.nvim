@@ -16,48 +16,90 @@ local function move_shell_cursor(buf, cursor, command)
   end
 end
 
----@param buf integer
----@param prompt_end_cursor integer[]
----@return string
-local function command_text_without_completion_rows(buf, prompt_end_cursor)
-  local rows = terminal_buffer.command_rows(buf, prompt_end_cursor, true)
-  if #rows == 1 then
-    return rows[1]
+local function can_send_shell_integration_signal(buf)
+  return helpers.ensure_buffer_state(M.buffers, buf).active_prompt_source ~= "regex"
+end
+
+---Update cached prompt range from configured prompt patterns.
+---@param buf? integer
+function M.update_prompt_range(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  terminal_buffer.update_prompt_cursors_from_patterns(M.buffers, target)
+end
+
+---Return the cached prompt range, or nil when no prompt has been detected yet.
+---@param buf? integer
+---@return integer[]? prompt_start_cursor
+---@return integer[]? prompt_end_cursor
+function M.prompt_range(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  return terminal_buffer.prompt_range(M.buffers, target)
+end
+
+---Return the cursor where command text starts after the prompt, or nil before prompt detection.
+---@param buf? integer
+---@return integer[]? cursor 1-based row, 0-based column
+function M.command_start_cursor(buf)
+  local _, prompt_end_cursor = M.prompt_range(buf)
+  return prompt_end_cursor
+end
+
+---Return current cursor byte index inside command text, or nil before prompt detection.
+---@param win integer
+---@param buf? integer
+---@return integer?
+function M.cursor_index_in_command(win, buf)
+  local target = helpers.current_buf(buf)
+  local _, prompt_end_cursor = M.prompt_range(target)
+  if not prompt_end_cursor then
+    return nil
   end
-  -- Extra rows after the prompt are usually transient completion UI. Ask the
-  -- shell to clear them, then reread the terminal buffer as command text.
-  M.clear_completion_suggestions(buf)
-  return terminal_buffer.command_text(buf, prompt_end_cursor, true)
+  return terminal_buffer.cursor_index_from_start_cursor(
+    vim.api.nvim_win_get_cursor(win),
+    target,
+    prompt_end_cursor
+  )
 end
 
 ---Query the current shell command buffer.
 ---@param buf? integer
 ---@param timeout_ms? integer
+---@param backend? "auto"|"buffer" Communication backend. "auto" tries shell integration first; "buffer" reads rendered terminal text.
 ---@return string
-function M.read_command(buf, timeout_ms)
-  return M.read_state(buf, nil, timeout_ms).command
+function M.read_command(buf, timeout_ms, backend)
+  return M.read_state(buf, nil, timeout_ms, backend).command
 end
 
 ---Query the current shell command and cursor state.
 ---@param buf? integer
 ---@param win? integer
 ---@param timeout_ms? integer
+---@param backend? "auto"|"buffer" Communication backend. "auto" tries shell integration first; "buffer" reads rendered terminal text.
 ---@return { command: string, cursor: integer? }
-function M.read_state(buf, win, timeout_ms)
+function M.read_state(buf, win, timeout_ms, backend)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  terminal_buffer.update_prompt_cursors_from_patterns(M.buffers, target, win)
-  local _, prompt_end_cursor = terminal_buffer.prompt_range(M.buffers, target, win)
-  local command = command_text_without_completion_rows(target, prompt_end_cursor)
-  local state = helpers.ensure_buffer_state(M.buffers, target)
+  backend = backend or config.options.backend
+  if backend ~= "auto" and backend ~= "buffer" then
+    error("termio: backend must be 'auto' or 'buffer'")
+  end
+  M.update_prompt_range(target)
+  local _, prompt_end_cursor = M.prompt_range(target)
+  if not prompt_end_cursor then
+    error("termio: missing prompt end cursor")
+  end
+  if backend == "auto" and can_send_shell_integration_signal(target) then
+    local shell_state = shell_integration.read_state(target, timeout_ms)
+    if shell_state then
+      shell_state.command =
+        helpers.strip_patterns(shell_state.command, config.options.read_strip_patterns)
+      return shell_state
+    end
+  end
   win = win or helpers.visible_window(target)
-  local cursor = win
-      and terminal_buffer.cursor_index_from_start_cursor(win, target, prompt_end_cursor)
-    or nil
-  command = helpers.strip_patterns(command, config.options.read_strip_patterns)
-  state.shell_state.command = command
-  state.shell_state.cursor = cursor
-  return vim.deepcopy(state.shell_state)
+  return terminal_buffer.read_state(M.buffers, target, win, prompt_end_cursor)
 end
 
 ---Hide shell completion suggestions shown below the prompt.
@@ -65,8 +107,7 @@ end
 function M.clear_completion_suggestions(buf)
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local state = helpers.ensure_buffer_state(M.buffers, target)
-  if state.shell_integration then
+  if can_send_shell_integration_signal(target) then
     shell_integration.clear_completion_suggestions(target)
   end
 end
@@ -84,8 +125,7 @@ function M.write_command(command, buf, cursor)
   local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
   local state = helpers.ensure_buffer_state(M.buffers, target)
-  local win = helpers.visible_window(target)
-  local can_signal_shell = terminal_buffer.can_send_shell_integration_signal(M.buffers, target, win)
+  local can_signal_shell = can_send_shell_integration_signal(target)
   helpers.send_keys("<C-e><C-u>", target)
   helpers.send_bytes("\27[200~" .. shell_command .. "\27[201~", target)
   move_shell_cursor(target, shell_cursor, shell_command)

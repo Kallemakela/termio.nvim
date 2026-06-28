@@ -16,5 +16,11 @@ bind 'set active-region-end-color ""'
 termio_shell_clear_completions() {
   READLINE_LINE=$READLINE_LINE
 }
+
+termio_shell_read_state() {
+  printf '\e]633;E;%s;%s\a' "$READLINE_POINT" "$READLINE_LINE"
+}
+
 bind -x '"\C-x\C-t": termio_shell_clear_completions'
+bind -x '"\C-x\C-r": termio_shell_read_state'
 printf '\e]633;I;bash\a'

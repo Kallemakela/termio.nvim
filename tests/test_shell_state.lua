@@ -42,6 +42,14 @@ T["OSC633 integration marker stores shell"] = function()
   MiniTest.expect.equality(state.shell_integration.kind, "zsh")
 end
 
+T["OSC633 command marker stores shell command state"] = function()
+  local state = state_for("\027]633;E;4;echo test\007")
+
+  MiniTest.expect.equality(state.shell_state.command, "echo test")
+  MiniTest.expect.equality(state.shell_state.cursor, 4)
+  MiniTest.expect.equality(state.shell_query_pending, false)
+end
+
 T["OSC title stores terminal title"] = function()
   local state = state_for("\027]2;python\007")
 

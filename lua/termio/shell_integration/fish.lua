@@ -1,3 +1,5 @@
+local helpers = require("termio.util.helpers")
+
 local M = { kind = "fish" }
 
 ---@param payload string
@@ -13,6 +15,11 @@ function M.clear_completion_suggestions(buf)
     error("termio: missing terminal channel for fish wake")
   end
   vim.api.nvim_chan_send(channel, "\24\20")
+end
+
+---@param buf integer
+function M.read_state(buf)
+  helpers.send_bytes("\24\18", buf)
 end
 
 function M.redraw_after_pty_write() end

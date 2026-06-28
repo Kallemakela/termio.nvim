@@ -2,10 +2,38 @@
 
 set -eu
 
-file=${1:?usage: sh run_filtered_tests.sh <file> <string>}
-match=${2:?usage: sh run_filtered_tests.sh <file> <string>}
+usage="usage: sh run_filtered_tests.sh [--backend auto|buffer] <file> <string>"
+backend=
 
-MINITEST_FILE="$file" MINITEST_MATCH="$match" nvim --headless --noplugin -u "./scripts/minimal_init.lua" -c "lua
+while [ "$#" -gt 0 ]; do
+	case "$1" in
+		--backend)
+			[ "$#" -ge 2 ] || {
+				printf '%s\n' "$usage" >&2
+				exit 1
+			}
+			backend=$2
+			shift 2
+			;;
+		*)
+			break
+			;;
+	esac
+done
+
+case "$backend" in
+	''|auto|buffer)
+		;;
+	*)
+		printf '%s\n' "backend must be one of: auto, buffer" >&2
+		exit 1
+		;;
+esac
+
+file=${1:?$usage}
+match=${2:?$usage}
+
+TERMIO_TEST_BACKEND="$backend" MINITEST_FILE="$file" MINITEST_MATCH="$match" nvim --headless --noplugin -u "./scripts/minimal_init.lua" -c "lua
 local file = vim.fn.fnamemodify(vim.env.MINITEST_FILE, ':.')
 local match = vim.env.MINITEST_MATCH
 local cases = MiniTest.collect({

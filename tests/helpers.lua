@@ -5,6 +5,16 @@ local test_zdotdir = test_root .. "/zsh-test"
 local test_bash_env = test_root .. "/bash-test/env"
 local test_fish_config = test_root .. "/fish-test"
 
+local function test_backend_option()
+  if not vim.env.TERMIO_TEST_BACKEND or vim.env.TERMIO_TEST_BACKEND == "" then
+    return "{}"
+  end
+  if vim.env.TERMIO_TEST_BACKEND ~= "auto" and vim.env.TERMIO_TEST_BACKEND ~= "buffer" then
+    error("TERMIO_TEST_BACKEND must be one of: auto, buffer")
+  end
+  return string.format("{ backend = %q }", vim.env.TERMIO_TEST_BACKEND)
+end
+
 -- Add extra expectations
 Helpers.expect = vim.deepcopy(MiniTest.expect)
 
@@ -217,9 +227,12 @@ Helpers.setup_child = function(child, setup)
         timeouts = {
           -- TODO: Inspect why headless tests need a larger render timeout.
           render_command = { limit_ms = 500, interval_ms = 10 },
+          shell_query = { limit_ms = 500, interval_ms = 10 },
+          terminal_leave = { limit_ms = 500, interval_ms = 10 },
         },
-      }, %s))
+      }, %s, %s))
     ]],
+    test_backend_option(),
     setup or "{ editor = { type = nil } }"
   ))
 end
@@ -277,16 +290,31 @@ end
 
 Helpers.wait_for_read_command = function(child, buf, expected, timeout)
   local got
+  local read_error
   local ok, err = pcall(function()
     Helpers.wait_until(child, function()
-      got = child.lua_get([[require("termio").read_command(...)]], { buf })
+      local did_read, result = pcall(function()
+        return child.lua_get([[require("termio").read_command(..., nil, "buffer")]], { buf })
+      end)
+      if not did_read then
+        read_error = result
+        return false
+      end
+      got = result
       return got == expected
     end, timeout)
   end)
   if ok then
     return
   end
-  error(string.format("expected read_command %q, got %q", expected, got or "<nil>"))
+  error(
+    string.format(
+      "expected read_command %q, got %q (%s)",
+      expected,
+      got or "<nil>",
+      read_error or err
+    )
+  )
 end
 
 Helpers.wait_for_editable_command = function(child, buf, expected, timeout)

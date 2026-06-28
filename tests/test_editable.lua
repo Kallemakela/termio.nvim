@@ -172,6 +172,16 @@ T["editable repl"]["edits nested Python command"] = function()
   Helpers.wait_for_shell_output(child, buf, "hello goodbye again", nil, ">>> ")
 end
 
+T["editable repl"]["open keeps cursor at Python command end"] = function()
+  local buf = open_python_repl()
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("1+1")
+  Helpers.wait_for_read_command(child, buf, "1+1")
+  Helpers.open_editable_normal_mode(child, buf)
+  MiniTest.expect.equality(get_cursor_index_in_command(buf), 2)
+end
+
 T["editable edit"]["open stores current shell state"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")

@@ -17,6 +17,10 @@ function termio_shell_clear_transient_ui
   commandline -f repaint
 end
 
+function termio_shell_read_state
+  printf '\e]633;E;%d;%s\a' (commandline -C) (commandline)
+end
+
 if functions -q fish_user_key_bindings
   functions -c fish_user_key_bindings termio_original_fish_user_key_bindings
 end
@@ -26,7 +30,9 @@ function fish_user_key_bindings
     termio_original_fish_user_key_bindings
   end
   bind \cx\ct termio_shell_clear_transient_ui
+  bind \cx\cr termio_shell_read_state
 end
 
 bind \cx\ct termio_shell_clear_transient_ui
+bind \cx\cr termio_shell_read_state
 printf '\e]633;I;fish\a'

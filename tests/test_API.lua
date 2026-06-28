@@ -68,6 +68,21 @@ T["read_command()"]["detects default Python REPL prompt regex"] = function()
   )
 end
 
+T["read_command()"]["regex prompt refresh keeps latest prompt"] = function()
+  MiniTest.expect.equality(
+    child.lua_get([[
+      (function()
+      local buf = vim.api.nvim_create_buf(false, true)
+      vim.api.nvim_buf_set_lines(buf, 0, -1, false, { "$ python", ">>> 1 + 1", "2", ">>> " })
+      local buffers = { [buf] = { prompt_start_cursor = { 1, 0 } } }
+      local _, prompt_end = require("termio.terminal_buffer").update_prompt_cursors_from_patterns(buffers, buf)
+      return prompt_end
+      end)()
+    ]]),
+    { 4, 4 }
+  )
+end
+
 T["write_command()"] = MiniTest.new_set()
 
 T["write_command()"]["empty command after cursor stays empty"] = function()

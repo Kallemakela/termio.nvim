@@ -27,27 +27,34 @@ local function set_sync_block_reason(buf, reason)
   M.buffers[buf].sync_block_reason = reason
 end
 
-local function command_start_cursor(buf)
-  local _, prompt_end_cursor = terminal_buffer.get_prompt_range(api.buffers, buf)
-  return prompt_end_cursor
+local function has_command_start_cursor(buf)
+  return api.command_start_cursor(buf) ~= nil
+end
+
+local function ensure_command_start_cursor(buf)
+  if has_command_start_cursor(buf) then
+    return true
+  end
+  api.update_prompt_range(buf)
+  return has_command_start_cursor(buf)
 end
 
 ---Read the editable draft command from the terminal buffer.
 ---@param buf integer
 ---@return string
 function M.read_command_from_buffer(buf)
-  return terminal_buffer.command_text(buf, command_start_cursor(buf))
+  return terminal_buffer.command_text(buf, api.command_start_cursor(buf))
 end
 
 local function read_editor_state(buf, win)
   return {
     command = M.read_command_from_buffer(buf),
-    cursor = terminal_buffer.cursor_index_in_command(api.buffers, win, buf),
+    cursor = api.cursor_index_in_command(win, buf),
   }
 end
 
 local function is_prompt_rendered(buf)
-  local cursor = command_start_cursor(buf)
+  local cursor = api.command_start_cursor(buf)
   if not cursor then
     return false
   end
@@ -73,13 +80,6 @@ local function wait_until_command_is_rendered(buf, command)
   end, timeout.interval_ms)
 end
 
-local function wait_for_terminal_leave(buf)
-  local timeout = config.options.timeouts.terminal_leave
-  vim.wait(timeout.limit_ms, function()
-    return vim.api.nvim_get_mode().mode ~= "t"
-  end, timeout.interval_ms)
-end
-
 local function is_position_after(row, col, target)
   return row > target[1] or (row == target[1] and col > target[2])
 end
@@ -89,7 +89,7 @@ end
 ---@param offset integer offset from prompt end
 ---@return integer[] cursor 1-based row, 0-based column
 local function get_buffer_location_from_shell_offset(buf, offset)
-  return terminal_buffer.location_from_offset(buf, command_start_cursor(buf), offset)
+  return terminal_buffer.location_from_offset(buf, api.command_start_cursor(buf), offset)
 end
 
 ---Return the editable command zone in the terminal buffer.
@@ -97,7 +97,7 @@ end
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
 function M.get_editable_zone(buf)
   local target = buf or vim.api.nvim_get_current_buf()
-  local cursor = command_start_cursor(target)
+  local cursor = api.command_start_cursor(target)
   if not cursor then
     return nil
   end
@@ -280,8 +280,12 @@ local function override_state(current, target)
 end
 
 local function enter_insert_with_target(buf, target_state)
-  local target =
-    override_state(read_editor_state(buf, vim.api.nvim_get_current_win()), target_state)
+  local win = vim.api.nvim_get_current_win()
+  if not ensure_command_start_cursor(buf) then
+    vim.cmd.startinsert()
+    return
+  end
+  local target = override_state(read_editor_state(buf, win), target_state)
   M.write(buf, target)
   vim.cmd.startinsert()
 end
@@ -348,7 +352,7 @@ end
 ---@param cursor integer[] 1-based row, 0-based column
 ---@return integer offset
 local function get_shell_cursor_offset(buf, cursor)
-  local prompt_row, prompt_col = unpack(command_start_cursor(buf))
+  local prompt_row, prompt_col = unpack(api.command_start_cursor(buf))
   local offset = 0
   for row = prompt_row, cursor[1] do
     local line = vim.api.nvim_buf_get_lines(buf, row - 1, row, false)[1] or ""
@@ -484,7 +488,7 @@ function M.handle_text_changed(buf)
     has_unsynced_edits = bufinfo.has_unsynced_edits,
     line = vim.api.nvim_get_current_line(),
   })
-  if not command_start_cursor(buf) then
+  if not has_command_start_cursor(buf) then
     log.debug("editable.text_changed.skip", {
       buf = buf,
       sync_block_reason = bufinfo.sync_block_reason,
@@ -515,6 +519,9 @@ end
 ---Open the editable terminal editor for the target terminal.
 ---@param ctx? table
 ---@return boolean opened
+---Open the editable terminal editor for the target terminal.
+---@param ctx? table
+---@return boolean opened
 function M.open(ctx)
   ctx = build_context(ctx)
   local buf, win = ctx.target_buf, ctx.target_win
@@ -526,14 +533,12 @@ function M.open(ctx)
     return false
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
-  terminal_buffer.update_prompt_cursors_from_patterns(api.buffers, buf, win)
-  vim.cmd("stopinsert")
-  wait_for_terminal_leave(buf)
   buffer_state.shell_state = api.read_state(buf, win)
+  api.clear_completion_suggestions(buf)
   log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   wait_until_command_is_rendered(buf, buffer_state.shell_state.command)
   local cursor = vim.api.nvim_win_get_cursor(win)
-  cursor = move_cursor_back_to_editable_zone(buf, cursor, win, buffer_state.shell_state.cursor)
+  cursor = move_cursor_back_to_editable_zone(buf, cursor, win, #buffer_state.shell_state.command)
   refresh_editable_state(buf, cursor, win)
   return true
 end
@@ -543,13 +548,9 @@ local function apply_keymaps(buf)
     open = function(lhs)
       return function()
         log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
-        local ok, opened = pcall(M.open, { target_buf = buf })
-        if not ok then
-          log.debug("editable.key.open.failed", { buf = buf, error = opened })
-        end
-        if not ok or opened == false then
-          helpers.send_keys(lhs, buf)
-        end
+        return run_termio_action(buf, "editable.key.open", function()
+          vim.cmd("stopinsert")
+        end, helpers.term_codes(lhs))
       end
     end,
     submit = function()
@@ -807,6 +808,10 @@ M.setup = function()
           -- from the mode switch or shell redraw instead of a deliberate edit.
           set_sync_block_reason(args.buf, "term_leave")
           log.debug("editable.term_leave", { buf = args.buf })
+          local ok, opened = pcall(M.open, { target_buf = args.buf })
+          if not ok then
+            log.debug("editable.open.failed", { buf = args.buf, error = opened })
+          end
         end,
       })
       vim.api.nvim_create_autocmd("BufDelete", {

@@ -76,12 +76,14 @@ end
 ---@param buf? integer
 ---@return integer
 function M.current_buf(buf)
+  -- TODO: remove this function if possible
   return buf or vim.api.nvim_get_current_buf()
 end
 
 ---@param buf integer
 ---@return integer?
 function M.visible_window(buf)
+  -- TODO: remove this function if possible
   local win = vim.fn.bufwinid(buf)
   return win ~= -1 and win or nil
 end
