@@ -53,6 +53,43 @@ local function get_command()
   return format_lines(get_words())
 end
 
+local function shell_command(args)
+  local command = vim.tbl_map(vim.fn.shellescape, args.env)
+  command[#command + 1] = args.shell
+  vim.list_extend(command, vim.tbl_map(vim.fn.shellescape, args.argv or {}))
+  return table.concat(command, " ")
+end
+
+local function test_shell_command(shell)
+  local repo_root = vim.fn.fnamemodify(root, ":h")
+  local commands = {
+    zsh = shell_command({
+      env = { "env", "ZDOTDIR=" .. repo_root .. "/zsh-test", "TERMIO_REPO_ROOT=" .. repo_root },
+      shell = shell,
+      argv = { "-d", "-i" },
+    }),
+    bash = shell_command({
+      env = {
+        "env",
+        "BASH_ENV=" .. repo_root .. "/bash-test/env",
+        "TERMIO_REPO_ROOT=" .. repo_root,
+      },
+      shell = shell,
+      argv = { "--rcfile", repo_root .. "/bash-test/env", "-i" },
+    }),
+    fish = shell_command({
+      env = {
+        "env",
+        "XDG_CONFIG_HOME=" .. repo_root .. "/fish-test",
+        "TERMIO_REPO_ROOT=" .. repo_root,
+      },
+      shell = shell,
+      argv = { "-i" },
+    }),
+  }
+  return commands[vim.fn.fnamemodify(shell, ":t")]
+end
+
 function M.setup(opts)
   opts = opts or {}
   _G.termio_debug = debug_tools
@@ -78,7 +115,12 @@ function M.open_terminal()
   elseif layout ~= "single" then
     error("test entrypoint: invalid layout: " .. layout)
   end
-  vim.cmd.terminal()
+  local shell_command = test_shell_command(vim.env.SHELL or vim.o.shell)
+  if shell_command then
+    vim.cmd.terminal(shell_command)
+  else
+    vim.cmd.terminal()
+  end
   M.terminal_buf = vim.api.nvim_get_current_buf()
   M.terminal_win = vim.api.nvim_get_current_win()
   M.terminal_chan = vim.b.terminal_job_id or vim.bo.channel

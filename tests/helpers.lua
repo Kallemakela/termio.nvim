@@ -395,17 +395,16 @@ Helpers.open_shell = function(child, prompt, shell)
   if shell == "zsh" then
     child.cmd(
       string.format(
-        [[terminal env ZDOTDIR=%q TERMIO_REPO_ROOT=%q PS1=%q PROMPT=%q zsh -d -i]],
+        [[terminal env ZDOTDIR=%q TERMIO_REPO_ROOT=%q TERMIO_TEST_PROMPT=%q zsh -d -i]],
         test_zdotdir,
         test_root,
-        prompt,
         prompt
       )
     )
   elseif shell == "bash" then
     child.cmd(
       string.format(
-        [[terminal env BASH_ENV=%q TERMIO_REPO_ROOT=%q PS1=%q bash --rcfile %q -i]],
+        [[terminal env BASH_ENV=%q TERMIO_REPO_ROOT=%q TERMIO_TEST_PROMPT=%q bash --rcfile %q -i]],
         test_bash_env,
         test_root,
         prompt,
