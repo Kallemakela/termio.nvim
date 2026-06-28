@@ -4,7 +4,7 @@ M.defaults = {
   backend = "auto",
   prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_strip_patterns = {},
-  write_strip_patterns = { "\n" },
+  write_strip_patterns = {},
   timeouts = {
     -- Poll for terminal buffer render to catch up to writes.
     render_command = { limit_ms = 50, interval_ms = 2 },
