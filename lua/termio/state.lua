@@ -21,15 +21,6 @@ function M.disable()
   vim.notify("termio disabled", vim.log.levels.INFO)
 end
 
----Toggle termio editor integrations.
-function M.toggle()
-  if M.is_enabled() then
-    M.disable()
-  else
-    M.enable()
-  end
-end
-
 ---Return whether termio editor integrations are enabled.
 ---@return boolean
 function M.is_enabled()

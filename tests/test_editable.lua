@@ -36,6 +36,25 @@ T["editable keymaps"]["allows configured terminal name pattern"] = function()
   MiniTest.expect.equality(Helpers.has_terminal_esc_mapping(child), true)
 end
 
+T["editable keymaps"]["disable unloads editor keymaps but keeps toggle"] = function()
+  local buf = Helpers.open_shell(child)
+  local has_map = function(mode, lhs)
+    return child.lua_get(
+      [[(function(buf, mode, lhs)
+        return vim.tbl_contains(vim.tbl_map(function(map) return map.lhs end, vim.api.nvim_buf_get_keymap(buf, mode)), lhs)
+      end)(...)]],
+      { buf, mode, lhs }
+    )
+  end
+  MiniTest.expect.equality(has_map("t", "<CR>"), true)
+  MiniTest.expect.equality(has_map("t", "<M-t>"), true)
+  child.lua([[require("termio").disable()]])
+  MiniTest.expect.equality(has_map("t", "<CR>"), false)
+  MiniTest.expect.equality(has_map("t", "<M-t>"), true)
+  child.lua([[require("termio").enable()]])
+  MiniTest.expect.equality(has_map("t", "<CR>"), true)
+end
+
 local function get_cursor_index_in_command(buf)
   local win = child.api.nvim_get_current_win()
   return child.lua_get([=[require("termio").cursor_index_in_command(...)]=], { win, buf })
@@ -128,26 +147,6 @@ T["editable edit"]["actions are disabled after terminal exits"] = function()
   child.api.nvim_input("<Esc>")
   child.wait(100)
   Helpers.expect.no_match(child.cmd_capture("messages"), "closed stream")
-end
-
-T["editable edit"]["normal insert keys do nothing when disabled"] = function()
-  Helpers.setup_child(
-    child,
-    [=[{ editor = { type = "editable", terminal_name_pattern = [[/bin/sh]] } }]=]
-  )
-  child.cmd("terminal /bin/sh")
-  local buf = child.api.nvim_get_current_buf()
-  child.lua([[require("termio").disable()]])
-  child.api.nvim_input([[<C-\><C-n>]])
-  Helpers.wait_for_mode(child, "nt")
-  child.api.nvim_input("a")
-  child.wait(100)
-  Helpers.expect.no_match(
-    child.lua_get([[vim.api.nvim_exec2("messages", { output = true }).output]]),
-    "command_start_cursor"
-  )
-  MiniTest.expect.equality(child.lua_get("vim.api.nvim_get_mode().mode"), "nt")
-  MiniTest.expect.equality(child.api.nvim_get_current_buf(), buf)
 end
 
 T["editable repl"]["edits and submits Python command"] = function()

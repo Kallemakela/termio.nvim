@@ -182,7 +182,7 @@ termio.nvim/
 │   ├── commands.lua             user commands
 │   ├── health.lua               :checkhealth termio checks
 │   ├── terminal_buffer.lua      terminal-buffer reads and cursor math
-│   ├── state.lua                plugin state
+│   ├── state.lua                plugin state storage
 │   ├── shell_state.lua          OSC marker state updates
 │   ├── editors/                 bundled terminal-buffer editors
 │   │   └── editable.lua         default editable-buffer editor

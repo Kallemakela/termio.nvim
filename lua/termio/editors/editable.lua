@@ -1,8 +1,8 @@
 local config = require("termio.config")
 local api = require("termio.api")
 local helpers = require("termio.util.helpers")
+local keymaps = require("termio.util.keymaps")
 local log = require("termio.util.log")
-local state = require("termio.state")
 local terminal_buffer = require("termio.terminal_buffer")
 local M = {}
 local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
@@ -298,10 +298,10 @@ local function run_termio_action(buf, event, action, disabled_return)
   return action()
 end
 
-local function set_termio_keymap(mode, lhs, event, buf, action, opts)
-  opts = vim.tbl_extend("force", { buffer = buf }, opts or {})
+local function set_termio_keymap(buf, mode, lhs, event, action, opts)
+  opts = opts or {}
   local disabled_return = opts.expr and "" or nil
-  vim.keymap.set(mode, lhs, function()
+  M.buffers[buf].keymaps:map(mode, lhs, function()
     return run_termio_action(buf, event, action, disabled_return)
   end, opts)
 end
@@ -543,7 +543,8 @@ function M.open(ctx)
   return true
 end
 
-local function apply_keymaps(buf)
+local function map_config_keymaps(buf)
+  local buffer_state = M.buffers[buf]
   local handlers = {
     open = function(lhs)
       return function()
@@ -574,19 +575,27 @@ local function apply_keymaps(buf)
     end,
     toggle = function()
       log.debug("editable.key.toggle", { buf = buf, mode = vim.api.nvim_get_mode().mode })
-      state.toggle()
+      require("termio").toggle()
     end,
   }
   for lhs, action in pairs(config.options.editor.keys.t) do
     local handler = action == "open" and handlers.open(lhs) or handlers[action]
     if handler then
-      vim.keymap.set("t", lhs, handler, { buffer = buf })
+      if action == "toggle" then
+        buffer_state.keymaps:always("t", lhs, handler)
+      else
+        buffer_state.keymaps:map("t", lhs, handler)
+      end
     end
   end
   for lhs, action in pairs(config.options.editor.keys.n) do
     local handler = handlers[action]
     if handler then
-      vim.keymap.set("n", lhs, handler, { buffer = buf })
+      if action == "toggle" then
+        buffer_state.keymaps:always("n", lhs, handler)
+      else
+        buffer_state.keymaps:map("n", lhs, handler)
+      end
     end
   end
 end
@@ -596,7 +605,7 @@ local function log_editable_key(event, buf)
 end
 
 -- Enter terminal insert mode at Vim-like insertion targets.
-local function apply_insert_keymaps(buf)
+local function map_insert_keymaps(buf)
   local insert_targets = {
     A = {
       cursor = function(current)
@@ -612,7 +621,7 @@ local function apply_insert_keymaps(buf)
     },
   }
   for lhs, target in pairs(insert_targets) do
-    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
       log_editable_key("editable.key." .. lhs, buf)
       enter_insert_with_target(buf, target or nil)
     end)
@@ -620,7 +629,7 @@ local function apply_insert_keymaps(buf)
 end
 
 -- Apply immediate normal-mode edits that do not need a motion.
-local function apply_normal_edit_keymaps(buf)
+local function map_normal_edit_keymaps(buf)
   local normal_edits = {
     x = function()
       mark_unsynced_edit(buf)
@@ -636,46 +645,46 @@ local function apply_normal_edit_keymaps(buf)
     end,
   }
   for lhs, action in pairs(normal_edits) do
-    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
       log_editable_key("editable.key." .. lhs, buf)
       action()
     end)
   end
 end
 
-local function apply_normal_motion_keymaps(buf)
+local function map_normal_motion_keymaps(buf)
   local normal_motions =
     { ["0"] = move_to_command_start, ["^"] = move_to_command_start, ["$"] = move_to_command_end }
   for lhs, action in pairs(normal_motions) do
-    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
       log_editable_key("editable.key." .. lhs, buf)
       action(buf)
     end)
   end
 end
 
-local function apply_operator_pending_motion_keymaps(buf)
+local function map_operator_pending_motion_keymaps(buf)
   local operator_motions = {
     ["0"] = add_mark_to_command_start,
     ["^"] = add_mark_to_command_start,
     ["$"] = charwise_command_end_operator_motion,
   }
   for lhs, action in pairs(operator_motions) do
-    set_termio_keymap("o", lhs, "editable.key.operator_" .. lhs, buf, function()
+    set_termio_keymap(buf, "o", lhs, "editable.key.operator_" .. lhs, function()
       log_editable_key("editable.key.operator_" .. lhs, buf)
       return action(buf)
     end, { expr = true })
   end
 end
 
-local function apply_visual_motion_keymaps(buf)
+local function map_visual_motion_keymaps(buf)
   local visual_motions = {
     ["0"] = add_mark_to_command_start,
     ["^"] = add_mark_to_command_start,
     ["$"] = add_mark_to_command_last_byte,
   }
   for lhs, action in pairs(visual_motions) do
-    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
       log_editable_key("editable.key.visual_" .. lhs, buf)
       return action(buf)
     end, { expr = true })
@@ -683,7 +692,7 @@ local function apply_visual_motion_keymaps(buf)
 end
 
 -- Start Vim's operator flow for normal-mode delete/change commands.
-local function apply_normal_operator_keymaps(buf)
+local function map_normal_operator_keymaps(buf)
   local normal_operators = {
     dd = {
       start = function()
@@ -737,17 +746,17 @@ local function apply_normal_operator_keymaps(buf)
     },
   }
   for lhs, operator in pairs(normal_operators) do
-    set_termio_keymap("n", lhs, "editable.key." .. lhs, buf, function()
+    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
       log_editable_key("editable.key." .. lhs, buf)
       return operator.start() .. operator.motion()
     end, { expr = true, remap = operator.remap })
   end
 end
 
-local function apply_visual_operator_keymaps(buf)
+local function map_visual_operator_keymaps(buf)
   -- Visual mode already has a selected range, so no extra motion suffix is needed.
   for _, lhs in ipairs({ "c", "s" }) do
-    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
       log_editable_key("editable.key.visual_" .. lhs, buf)
       return start_change_operator()
     end, { expr = true })
@@ -755,25 +764,37 @@ local function apply_visual_operator_keymaps(buf)
 end
 
 -- Replace a visual selection with the selected paste register.
-local function apply_visual_paste_keymaps(buf)
+local function map_visual_paste_keymaps(buf)
   local visual_pastes = { p = true, P = false }
   for lhs, after in pairs(visual_pastes) do
-    set_termio_keymap("x", lhs, "editable.key.visual_" .. lhs, buf, function()
+    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
       log_editable_key("editable.key.visual_" .. lhs, buf)
       paste_register_over_visual_selection(after)
     end)
   end
 end
 
-local function apply_editable_keymaps(buf)
-  apply_insert_keymaps(buf)
-  apply_normal_edit_keymaps(buf)
-  apply_normal_motion_keymaps(buf)
-  apply_operator_pending_motion_keymaps(buf)
-  apply_visual_motion_keymaps(buf)
-  apply_normal_operator_keymaps(buf)
-  apply_visual_operator_keymaps(buf)
-  apply_visual_paste_keymaps(buf)
+local function map_editable_keymaps(buf)
+  map_insert_keymaps(buf)
+  map_normal_edit_keymaps(buf)
+  map_normal_motion_keymaps(buf)
+  map_operator_pending_motion_keymaps(buf)
+  map_visual_motion_keymaps(buf)
+  map_normal_operator_keymaps(buf)
+  map_visual_operator_keymaps(buf)
+  map_visual_paste_keymaps(buf)
+end
+
+function M.enable()
+  for _, buffer_state in pairs(M.buffers or {}) do
+    buffer_state.keymaps:enable()
+  end
+end
+
+function M.disable()
+  for _, buffer_state in pairs(M.buffers or {}) do
+    buffer_state.keymaps:disable()
+  end
 end
 
 M.setup = function()
@@ -786,13 +807,17 @@ M.setup = function()
       end
       M.buffers[args.buf] = {
         has_unsynced_edits = false,
+        keymaps = keymaps.group({
+          buffer = args.buf,
+          enabled = not helpers.is_editor_disabled(args.buf),
+        }),
         sync_block_reason = "term_leave",
       }
       log.debug("editable.term_open", { buf = args.buf })
-      apply_keymaps(args.buf)
+      map_config_keymaps(args.buf)
+      map_editable_keymaps(args.buf)
       local editgroup =
         vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
-      apply_editable_keymaps(args.buf)
       vim.api.nvim_create_autocmd("TextChanged", {
         buffer = args.buf,
         group = editgroup,
@@ -818,6 +843,7 @@ M.setup = function()
         group = editgroup,
         buffer = args.buf,
         callback = function(args)
+          M.buffers[args.buf] = nil
           vim.api.nvim_del_augroup_by_id(editgroup)
         end,
       })
