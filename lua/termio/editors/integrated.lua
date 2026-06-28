@@ -5,8 +5,8 @@ local keymaps = require("termio.util.keymaps")
 local log = require("termio.util.log")
 local terminal_buffer = require("termio.terminal_buffer")
 local M = {}
-local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_delete_operator"
-local YANK_OPERATOR_FUNC = "v:lua.require'termio.editors.editable'.apply_yank_operator"
+local DELETE_OPERATOR_FUNC = "v:lua.require'termio.editors.integrated'.apply_delete_operator"
+local YANK_OPERATOR_FUNC = "v:lua.require'termio.editors.integrated'.apply_yank_operator"
 -- `g@` calls operatorfunc after the keymap returns, so keep the selected
 -- after-delete behavior in an upvalue until `apply_delete_operator()` runs.
 local pending_after_delete_operator
@@ -39,7 +39,7 @@ local function ensure_command_start_cursor(buf)
   return has_command_start_cursor(buf)
 end
 
----Read the editable draft command from the terminal buffer.
+---Read the integrated draft command from the terminal buffer.
 ---@param buf integer
 ---@return string
 function M.read_command_from_buffer(buf)
@@ -66,7 +66,7 @@ local function is_command_rendered(buf, command)
   return is_prompt_rendered(buf) and M.read_command_from_buffer(buf) == command
 end
 
----Wait for editable text to match shell state after query/write markers.
+---Wait for integrated text to match shell state after query/write markers.
 ---Bash readline redraw can arrive after the marker that updates shell state.
 ---@param buf integer
 ---@param command? string
@@ -114,7 +114,7 @@ end
 
 ---Normalize Vim's cursor form for a command ending at the terminal wrap edge.
 ---After linewise operators Vim may place the cursor at `{end_row + 1, 0}`.
----For an editable command ending exactly at `{end_row, #line}`, that is the same
+---For an integrated command ending exactly at `{end_row, #line}`, that is the same
 ---visual position as command end and must stay inside the editable zone.
 ---@param buf integer
 ---@param cursor integer[] 1-based row, 0-based column
@@ -208,18 +208,18 @@ local function move_cursor_back_to_editable_zone(buf, cursor, win, command_lengt
   return clamped_cursor
 end
 
----Refresh editable state from the current cursor position.
+---Refresh integrated state from the current cursor position.
 ---@param buf integer
 ---@param cursor integer[]
 ---@param win? integer
-local function refresh_editable_state(buf, cursor, win)
+local function refresh_integrated_state(buf, cursor, win)
   win = win or 0
   local current_cursor = vim.api.nvim_win_get_cursor(win)
   cursor = canonicalize_cursor_at_wrapped_command_end(buf, cursor)
   move_cursor_if_needed(win, current_cursor, cursor)
   vim.bo[buf].modifiable = M.is_cursor_in_editable_zone(buf, cursor)
   if vim.bo[buf].modifiable then
-    M.buffers[buf].last_editable_cursor = vim.deepcopy(cursor)
+    M.buffers[buf].last_integrated_cursor = vim.deepcopy(cursor)
   end
 end
 
@@ -237,8 +237,8 @@ function M.write(buf, target)
   end
   local command = target.command
   local cursor = target.cursor
-  local delay = config.options.waits.editable_write_guard_ms
-  log.debug("editable.write.start", {
+  local delay = config.options.waits.integrated_write_guard_ms
+  log.debug("integrated.write.start", {
     buf = buf,
     has_target = next(target) ~= nil,
     delay = delay,
@@ -252,7 +252,7 @@ function M.write(buf, target)
     if M.buffers[buf] and M.buffers[buf].sync_block_reason == "write" then
       set_sync_block_reason(buf, nil)
     end
-    log.debug("editable.writing.stop", { buf = buf })
+    log.debug("integrated.writing.stop", { buf = buf })
   end, delay)
   local command_state = helpers.ensure_buffer_state(api.buffers, buf).shell_state
   local did_sync = command_state.command ~= command
@@ -261,7 +261,7 @@ function M.write(buf, target)
     api.write_command(command, buf, cursor)
     wait_until_command_is_rendered(buf, command)
   end
-  log.debug("editable.write.done", { buf = buf, did_sync = did_sync })
+  log.debug("integrated.write.done", { buf = buf, did_sync = did_sync })
   return did_sync
 end
 
@@ -311,9 +311,9 @@ local function mark_unsynced_edit(buf)
   M.buffers[buf].has_unsynced_edits = true
 end
 
-local function paste_register_into_editable_buffer(after, register)
+local function paste_register_into_integrated_buffer(after, register)
   -- `normal! p` can take terminal-buffer paste paths. Keep paste as a plain
-  -- buffer edit so the editable draft stays desynced from the shell state.
+  -- buffer edit so the integrated draft stays desynced from the shell state.
   local text = vim.fn.getreg(register or vim.v.register)
   local row, col = unpack(vim.api.nvim_win_get_cursor(0))
   if after then
@@ -333,7 +333,7 @@ local function delete_visual_selection_then(action)
   end
 end
 
----Replace the visual selection with a register using editable-buffer writes.
+---Replace the visual selection with a register using integrated-buffer writes.
 ---The delete step changes `vim.v.register`, so preserve and pass the original
 ---register explicitly to paste the user's intended text.
 ---@param after boolean paste after cursor when true, before cursor when false
@@ -343,7 +343,7 @@ local function paste_register_over_visual_selection(after)
   local register_type = vim.fn.getregtype(register)
   delete_visual_selection_then(function()
     vim.fn.setreg(register, text, register_type)
-    paste_register_into_editable_buffer(after, register)
+    paste_register_into_integrated_buffer(after, register)
   end)
 end
 
@@ -482,14 +482,14 @@ end
 ---@param buf integer
 function M.handle_text_changed(buf)
   local bufinfo = M.buffers[buf]
-  log.debug("editable.text_changed", {
+  log.debug("integrated.text_changed", {
     buf = buf,
     sync_block_reason = bufinfo.sync_block_reason,
     has_unsynced_edits = bufinfo.has_unsynced_edits,
     line = vim.api.nvim_get_current_line(),
   })
   if not has_command_start_cursor(buf) then
-    log.debug("editable.text_changed.skip", {
+    log.debug("integrated.text_changed.skip", {
       buf = buf,
       sync_block_reason = bufinfo.sync_block_reason,
       has_unsynced_edits = bufinfo.has_unsynced_edits,
@@ -498,7 +498,7 @@ function M.handle_text_changed(buf)
   end
   if bufinfo.sync_block_reason == "term_leave" then
     set_sync_block_reason(buf, nil)
-    log.debug("editable.text_changed.skip", {
+    log.debug("integrated.text_changed.skip", {
       buf = buf,
       sync_block_reason = bufinfo.sync_block_reason,
       has_unsynced_edits = bufinfo.has_unsynced_edits,
@@ -506,7 +506,7 @@ function M.handle_text_changed(buf)
     return
   end
   if bufinfo.sync_block_reason == "write" or bufinfo.has_unsynced_edits then
-    log.debug("editable.text_changed.skip", {
+    log.debug("integrated.text_changed.skip", {
       buf = buf,
       sync_block_reason = bufinfo.sync_block_reason,
       has_unsynced_edits = bufinfo.has_unsynced_edits,
@@ -516,10 +516,10 @@ function M.handle_text_changed(buf)
   M.write(buf)
 end
 
----Open the editable terminal editor for the target terminal.
+---Open the integrated terminal editor for the target terminal.
 ---@param ctx? table
 ---@return boolean opened
----Open the editable terminal editor for the target terminal.
+---Open the integrated terminal editor for the target terminal.
 ---@param ctx? table
 ---@return boolean opened
 function M.open(ctx)
@@ -529,17 +529,17 @@ function M.open(ctx)
     error("termio: terminal buffer name does not match editor.terminal_name_pattern")
   end
   if helpers.is_editor_disabled(buf) then
-    log.debug("editable.open.disabled", { buf = buf, win = win })
+    log.debug("integrated.open.disabled", { buf = buf, win = win })
     return false
   end
   local buffer_state = helpers.ensure_buffer_state(api.buffers, buf)
   buffer_state.shell_state = api.read_state(buf, win)
   api.clear_completion_suggestions(buf)
-  log.debug("editable.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
+  log.debug("integrated.open", { buf = buf, win = win, shell_state = buffer_state.shell_state })
   wait_until_command_is_rendered(buf, buffer_state.shell_state.command)
   local cursor = vim.api.nvim_win_get_cursor(win)
   cursor = move_cursor_back_to_editable_zone(buf, cursor, win, #buffer_state.shell_state.command)
-  refresh_editable_state(buf, cursor, win)
+  refresh_integrated_state(buf, cursor, win)
   return true
 end
 
@@ -548,16 +548,16 @@ local function map_config_keymaps(buf)
   local handlers = {
     open = function(lhs)
       return function()
-        log.debug("editable.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
-        return run_termio_action(buf, "editable.key.open", function()
+        log.debug("integrated.key.open", { buf = buf, mode = vim.api.nvim_get_mode().mode })
+        return run_termio_action(buf, "integrated.key.open", function()
           vim.cmd("stopinsert")
         end, helpers.term_codes(lhs))
       end
     end,
     submit = function()
-      return run_termio_action(buf, "editable.key.submit", function()
+      return run_termio_action(buf, "integrated.key.submit", function()
         local mode = vim.api.nvim_get_mode().mode
-        log.debug("editable.key.submit", { buf = buf, mode = mode })
+        log.debug("integrated.key.submit", { buf = buf, mode = mode })
         if mode:sub(1, 1) == "t" then
           helpers.send_keys("<CR>", buf)
         else
@@ -568,13 +568,13 @@ local function map_config_keymaps(buf)
       end)
     end,
     write = function()
-      return run_termio_action(buf, "editable.key.write", function()
-        log.debug("editable.key.write", { buf = buf, mode = vim.api.nvim_get_mode().mode })
+      return run_termio_action(buf, "integrated.key.write", function()
+        log.debug("integrated.key.write", { buf = buf, mode = vim.api.nvim_get_mode().mode })
         M.write(buf)
       end)
     end,
     toggle = function()
-      log.debug("editable.key.toggle", { buf = buf, mode = vim.api.nvim_get_mode().mode })
+      log.debug("integrated.key.toggle", { buf = buf, mode = vim.api.nvim_get_mode().mode })
       require("termio").toggle()
     end,
   }
@@ -600,7 +600,7 @@ local function map_config_keymaps(buf)
   end
 end
 
-local function log_editable_key(event, buf)
+local function log_integrated_key(event, buf)
   log.debug(event, { buf = buf, cursor = vim.api.nvim_win_get_cursor(0) })
 end
 
@@ -621,8 +621,8 @@ local function map_insert_keymaps(buf)
     },
   }
   for lhs, target in pairs(insert_targets) do
-    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
-      log_editable_key("editable.key." .. lhs, buf)
+    set_termio_keymap(buf, "n", lhs, "integrated.key." .. lhs, function()
+      log_integrated_key("integrated.key." .. lhs, buf)
       enter_insert_with_target(buf, target or nil)
     end)
   end
@@ -637,16 +637,16 @@ local function map_normal_edit_keymaps(buf)
     end,
     p = function()
       mark_unsynced_edit(buf)
-      paste_register_into_editable_buffer(true)
+      paste_register_into_integrated_buffer(true)
     end,
     P = function()
       mark_unsynced_edit(buf)
-      paste_register_into_editable_buffer(false)
+      paste_register_into_integrated_buffer(false)
     end,
   }
   for lhs, action in pairs(normal_edits) do
-    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
-      log_editable_key("editable.key." .. lhs, buf)
+    set_termio_keymap(buf, "n", lhs, "integrated.key." .. lhs, function()
+      log_integrated_key("integrated.key." .. lhs, buf)
       action()
     end)
   end
@@ -656,8 +656,8 @@ local function map_normal_motion_keymaps(buf)
   local normal_motions =
     { ["0"] = move_to_command_start, ["^"] = move_to_command_start, ["$"] = move_to_command_end }
   for lhs, action in pairs(normal_motions) do
-    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
-      log_editable_key("editable.key." .. lhs, buf)
+    set_termio_keymap(buf, "n", lhs, "integrated.key." .. lhs, function()
+      log_integrated_key("integrated.key." .. lhs, buf)
       action(buf)
     end)
   end
@@ -670,8 +670,8 @@ local function map_operator_pending_motion_keymaps(buf)
     ["$"] = charwise_command_end_operator_motion,
   }
   for lhs, action in pairs(operator_motions) do
-    set_termio_keymap(buf, "o", lhs, "editable.key.operator_" .. lhs, function()
-      log_editable_key("editable.key.operator_" .. lhs, buf)
+    set_termio_keymap(buf, "o", lhs, "integrated.key.operator_" .. lhs, function()
+      log_integrated_key("integrated.key.operator_" .. lhs, buf)
       return action(buf)
     end, { expr = true })
   end
@@ -684,8 +684,8 @@ local function map_visual_motion_keymaps(buf)
     ["$"] = add_mark_to_command_last_byte,
   }
   for lhs, action in pairs(visual_motions) do
-    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
-      log_editable_key("editable.key.visual_" .. lhs, buf)
+    set_termio_keymap(buf, "x", lhs, "integrated.key.visual_" .. lhs, function()
+      log_integrated_key("integrated.key.visual_" .. lhs, buf)
       return action(buf)
     end, { expr = true })
   end
@@ -746,8 +746,8 @@ local function map_normal_operator_keymaps(buf)
     },
   }
   for lhs, operator in pairs(normal_operators) do
-    set_termio_keymap(buf, "n", lhs, "editable.key." .. lhs, function()
-      log_editable_key("editable.key." .. lhs, buf)
+    set_termio_keymap(buf, "n", lhs, "integrated.key." .. lhs, function()
+      log_integrated_key("integrated.key." .. lhs, buf)
       return operator.start() .. operator.motion()
     end, { expr = true, remap = operator.remap })
   end
@@ -756,8 +756,8 @@ end
 local function map_visual_operator_keymaps(buf)
   -- Visual mode already has a selected range, so no extra motion suffix is needed.
   for _, lhs in ipairs({ "c", "s" }) do
-    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
-      log_editable_key("editable.key.visual_" .. lhs, buf)
+    set_termio_keymap(buf, "x", lhs, "integrated.key.visual_" .. lhs, function()
+      log_integrated_key("integrated.key.visual_" .. lhs, buf)
       return start_change_operator()
     end, { expr = true })
   end
@@ -767,14 +767,14 @@ end
 local function map_visual_paste_keymaps(buf)
   local visual_pastes = { p = true, P = false }
   for lhs, after in pairs(visual_pastes) do
-    set_termio_keymap(buf, "x", lhs, "editable.key.visual_" .. lhs, function()
-      log_editable_key("editable.key.visual_" .. lhs, buf)
+    set_termio_keymap(buf, "x", lhs, "integrated.key.visual_" .. lhs, function()
+      log_integrated_key("integrated.key.visual_" .. lhs, buf)
       paste_register_over_visual_selection(after)
     end)
   end
 end
 
-local function map_editable_keymaps(buf)
+local function map_integrated_keymaps(buf)
   map_insert_keymaps(buf)
   map_normal_edit_keymaps(buf)
   map_normal_motion_keymaps(buf)
@@ -800,7 +800,7 @@ end
 M.setup = function()
   M.buffers = M.buffers or {}
   vim.api.nvim_create_autocmd("TermOpen", {
-    group = vim.api.nvim_create_augroup("editable-term", {}),
+    group = vim.api.nvim_create_augroup("integrated-term", {}),
     callback = function(args)
       if not helpers.is_enabled_terminal(args.buf) then
         return
@@ -813,11 +813,11 @@ M.setup = function()
         }),
         sync_block_reason = "term_leave",
       }
-      log.debug("editable.term_open", { buf = args.buf })
+      log.debug("integrated.term_open", { buf = args.buf })
       map_config_keymaps(args.buf)
-      map_editable_keymaps(args.buf)
+      map_integrated_keymaps(args.buf)
       local editgroup =
-        vim.api.nvim_create_augroup("editable-term-text-change" .. args.buf, { clear = true })
+        vim.api.nvim_create_augroup("integrated-term-text-change" .. args.buf, { clear = true })
       vim.api.nvim_create_autocmd("TextChanged", {
         buffer = args.buf,
         group = editgroup,
@@ -832,10 +832,10 @@ M.setup = function()
           -- Any TextChanged immediately after leaving terminal mode may come
           -- from the mode switch or shell redraw instead of a deliberate edit.
           set_sync_block_reason(args.buf, "term_leave")
-          log.debug("editable.term_leave", { buf = args.buf })
+          log.debug("integrated.term_leave", { buf = args.buf })
           local ok, opened = pcall(M.open, { target_buf = args.buf })
           if not ok then
-            log.debug("editable.open.failed", { buf = args.buf, error = opened })
+            log.debug("integrated.open.failed", { buf = args.buf, error = opened })
           end
         end,
       })
@@ -854,7 +854,7 @@ M.setup = function()
           if M.buffers[args.buf].sync_block_reason == "term_leave" then
             return
           end
-          refresh_editable_state(args.buf, vim.api.nvim_win_get_cursor(0))
+          refresh_integrated_state(args.buf, vim.api.nvim_win_get_cursor(0))
         end,
       })
     end,

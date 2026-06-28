@@ -93,7 +93,7 @@ require("termio").setup({
   read_strip_patterns = {},
   write_strip_patterns = { "\n" },
   editor = {
-    type = "editable",
+    type = "integrated",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],
     open = "<Esc>",
     is_disabled = function(buf)
@@ -149,7 +149,7 @@ User commands target the current terminal buffer.
 
 ## Terms
 
-- Command: full editable command text, can contain multiple lines.
+- Command: full integrated command text, can contain multiple lines.
 - Command row: one line in a command.
 - Prompt: shell text shown before the command.
 - OSC133: terminal escape sequence used to find where the prompt ends and command starts.
@@ -185,7 +185,7 @@ termio.nvim/
 │   ├── state.lua                plugin state storage
 │   ├── shell_state.lua          OSC marker state updates
 │   ├── editors/                 bundled terminal-buffer editors
-│   │   └── editable.lua         default editable-buffer editor
+│   │   └── integrated.lua         default integrated-buffer editor
 │   ├── shell_integration/       shell marker and key-hook integration
 │   │   ├── init.lua             shell integration dispatch
 │   │   ├── zsh.lua              zsh integration

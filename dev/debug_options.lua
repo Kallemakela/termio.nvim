@@ -4,7 +4,7 @@ function M.build()
   local options = {
     debug = vim.env.TERMIO_DEBUG == "1",
     editor = {
-      type = vim.env.TERMIO_EDITOR or "editable",
+      type = vim.env.TERMIO_EDITOR or "integrated",
     },
   }
   if vim.env.TERMIO_BACKEND and vim.env.TERMIO_BACKEND ~= "" then

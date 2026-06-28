@@ -1,4 +1,4 @@
-# Plan: editable term buffer
+# Plan: integrated term buffer
 
 Idea:
 Terminal buffer is modifiable, actual shell state is hidden away and synced.
@@ -8,7 +8,7 @@ BLOCKED, can't insert in terminal buffer without sending chars to shell.
     - see `./insert-or-normal-mode-in-term-buffer.md`
 
 - The core problem with this approach is that the shell process directly writes to the terminal buffer.
-- This means that every key you send to shell, e.g. for sync, interacts with the editable buffer.
+- This means that every key you send to shell, e.g. for sync, interacts with the integrated buffer.
 - So flicker seems impossible to avoid, which was the main reason to use this over something like editable-term.nvim
 - What if we only sync on keys line cr, up, tab, similar to overlay?
     - Blocked: ./insert-or-normal-mode-in-term-buffer.md
@@ -19,8 +19,8 @@ BLOCKED, can't insert in terminal buffer without sending chars to shell.
 - Terminal buffer is presentation during draft edit, not source of truth
 
 ### State
-- `target_state.command`: editable draft command
-- `target_state.cursor`: editable draft cursor as logical command col
+- `target_state.command`: integrated draft command
+- `target_state.cursor`: integrated draft cursor as logical command col
 - `shell_state.command`: last known shell command
 - `shell_state.cursor`: last known shell cursor
 - `prompt_end_cursor`: current OSC133 prompt position

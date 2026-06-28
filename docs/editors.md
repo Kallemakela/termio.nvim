@@ -1,4 +1,4 @@
-Default editor: `overlay`.
+Default editor: `integrated`.
 
 ## `./overlay-editor.md`
 
@@ -8,12 +8,6 @@ It is the smoothest editing experience but it requires complexity to handle:
 - changing buffer when in the editor window
 - moving seamlessly in and out of the window when navigating the terminal
 
-## `./editable-editor.md`
-
-This editor is close to editable-term.nvim plugin implementation.
-It syncs on all insert mode entries and operations that require cursor movement.
-Downside is that it flickers due to terminal buffer rendering all edits made by the sync.
-
 ## `./integrated-editor.md`
 
-This editor is in between the other two. No extra window and syncs less often to reduce flickering.
+This editor integrates to the terminal buffer directly. Pros: no extra window, cons: hacky, needs to fight with pty over the buffer state.

@@ -10,17 +10,17 @@ M.defaults = {
     render_command = { limit_ms = 50, interval_ms = 2 },
     -- Poll for :stopinsert to finish leaving terminal mode.
     terminal_leave = { limit_ms = 10, interval_ms = 1 },
-    -- Poll for shell integration to report the editable command buffer.
+    -- Poll for shell integration to report the integrated command buffer.
     shell_query = { limit_ms = 50, interval_ms = 2 },
   },
   waits = {
     -- Ignore redraw-triggered TextChanged briefly after writing to the shell.
     -- This was needed when text write was done via nvim_chan_send, which could trigger
     -- the written text as user input. Might not be needed anymore.
-    editable_write_guard_ms = 0,
+    integrated_write_guard_ms = 0,
   },
   editor = {
-    type = "editable",
+    type = "integrated",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     open = "<Esc>",
     is_disabled = function()

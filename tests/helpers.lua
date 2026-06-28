@@ -324,7 +324,7 @@ Helpers.wait_for_editable_command = function(child, buf, expected, timeout)
     Helpers.wait_until(child, function()
       local did_read, result = pcall(function()
         return child.lua_get(
-          [[require("termio.editors.editable").read_command_from_buffer(...)]],
+          [[require("termio.editors.integrated").read_command_from_buffer(...)]],
           { buf }
         )
       end)

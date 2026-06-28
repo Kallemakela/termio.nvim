@@ -19,10 +19,10 @@ local function load_editor()
   local editor = config.options.editor.type
   if editor == nil then
     return nil
-  elseif editor == "editable" then
-    return require("termio.editors.editable")
+  elseif editor == "integrated" then
+    return require("termio.editors.integrated")
   end
-  error("termio: config.editor.type must be nil or 'editable'")
+  error("termio: config.editor.type must be nil or 'integrated'")
 end
 
 ---Enable termio integrations and reload enabled-only editor resources.

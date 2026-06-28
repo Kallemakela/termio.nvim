@@ -10,9 +10,9 @@ end
 ---@param buf integer
 ---@return { start_row: integer, start_col: integer, end_row: integer, end_col: integer }?
 function M.get(buf)
-  local editable = require("termio.editors.editable")
+  local integrated = require("termio.editors.integrated")
   local target_buf = current_buf(buf)
-  local zone = editable.get_editable_zone(target_buf)
+  local zone = integrated.get_editable_zone(target_buf)
   if not zone then
     return nil
   end

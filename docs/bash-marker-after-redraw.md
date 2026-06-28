@@ -5,7 +5,7 @@
 Observed failure:
 
 - Shell query state is correct, e.g. `command_len = 1270`, `cursor = 1270`.
-- Terminal buffer render is stale or truncated when editable code reads it.
+- Terminal buffer render is stale or truncated when integrated code reads it.
 - A fixed wait after the bash wake makes the issue disappear.
 
 ## Bash Source

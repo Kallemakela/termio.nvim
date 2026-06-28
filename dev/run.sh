@@ -5,7 +5,7 @@ ROOT=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 WORDS=3
 MULTILINE=
 CONFIG_MODE=debug
-EDITOR_MODE=editable
+EDITOR_MODE=integrated
 LAYOUT_MODE=single
 DEBUG=
 AUTO=
@@ -115,7 +115,7 @@ esac
 
 case "$EDITOR_MODE" in
 	'')
-		EDITOR_MODE=editable
+		EDITOR_MODE=integrated
 		;;
 esac
 
