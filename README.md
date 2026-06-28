@@ -3,7 +3,7 @@
 > [!NOTE]
 > WIP. Expect bugs.
 
-Edit the terminal buffer like any other text buffer with minimal latency.
+Edit the terminal like any other text with minimal latency.
 
 <img width="1600" height="795" alt="screen-recording-new" src="https://github.com/user-attachments/assets/9e546153-4f5e-4d87-a1c6-18f3a85fa9a3" />
 
