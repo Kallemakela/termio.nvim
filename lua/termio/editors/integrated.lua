@@ -43,7 +43,8 @@ end
 ---@param buf integer
 ---@return string
 function M.read_command_from_buffer(buf)
-  return terminal_buffer.command_text(buf, api.command_start_cursor(buf))
+  local rows = terminal_buffer.command_rows(buf, api.command_start_cursor(buf))
+  return helpers.command_from_rows(rows, config.options.clear_interrupt_replace_patterns)
 end
 
 local function read_editor_state(buf, win)

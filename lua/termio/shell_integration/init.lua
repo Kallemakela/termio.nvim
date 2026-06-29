@@ -32,7 +32,7 @@ end
 
 ---@param buf integer
 ---@param timeout_ms? integer
----@return { command: string, cursor: integer? }?
+---@return { rows: string[], cursor: integer[]?, cursor_index: integer? }?
 function M.read_state(buf, timeout_ms)
   local state = helpers.ensure_buffer_state(buffers, buf)
   if not state.shell_integration or not state.shell_integration.read_state then
@@ -49,7 +49,12 @@ function M.read_state(buf, timeout_ms)
     log.debug("shell_integration.read_state.timeout", { buf = buf, shell = state.shell_kind })
     return nil
   end
-  return vim.deepcopy(state.shell_state)
+  local shell_state = vim.deepcopy(state.shell_state)
+  return {
+    rows = { shell_state.command },
+    cursor = shell_state.cursor and { 1, shell_state.cursor } or nil,
+    cursor_index = shell_state.cursor,
+  }
 end
 
 ---@param buf integer

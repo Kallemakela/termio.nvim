@@ -87,12 +87,29 @@ end
 
 T["write_command()"] = MiniTest.new_set()
 
+local function skip_fish_ps2()
+  if vim.env.TERMIO_TEST_SHELL == "fish" then
+    MiniTest.skip("fish uses a different continuation prompt")
+  end
+end
+
 T["write_command()"]["empty command after cursor stays empty"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   child.lua([[require("termio").write_command("", ..., 1)]], { buf })
   Helpers.wait_for_read_command(child, buf, "")
+end
+
+T["write_command()"]["replaces PS2 continuation command"] = function()
+  skip_fish_ps2()
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo \\<CR>hello")
+  Helpers.wait_for_read_command(child, buf, "echo \\> hello")
+  child.lua([[require("termio").write_command("echo done", ...)]], { buf })
+  Helpers.wait_for_read_command(child, buf, "echo done")
 end
 
 T["clear_command()"] = MiniTest.new_set()
@@ -107,12 +124,13 @@ T["clear_command()"]["clears current command"] = function()
   Helpers.wait_for_read_command(child, buf, "")
 end
 
-T["clear_command()"]["clears zsh continuation command"] = function()
-  local buf = Helpers.open_shell(child, nil, "zsh")
+T["clear_command()"]["clears PS2 continuation command"] = function()
+  skip_fish_ps2()
+  local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
-  child.api.nvim_input("echo \\<CR>hello \\<CR>world")
-  Helpers.wait_for_read_command(child, buf, "echo \\> hello \\> world")
+  child.api.nvim_input("echo \\<CR>hello")
+  Helpers.wait_for_read_command(child, buf, "echo \\> hello")
   child.lua([[require("termio").clear_command(...)]], { buf })
   Helpers.wait_for_read_command(child, buf, "")
 end

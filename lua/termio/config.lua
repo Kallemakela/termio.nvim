@@ -5,6 +5,7 @@ M.defaults = {
   prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
   read_replace_patterns = {},
   write_replace_patterns = {},
+  clear_interrupt_replace_patterns = { { "\\$", "" }, { "^> ", "" } },
   timeouts = {
     -- Poll for terminal buffer render to catch up to writes.
     render_command = { limit_ms = 50, interval_ms = 2 },

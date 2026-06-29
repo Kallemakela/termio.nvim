@@ -93,6 +93,8 @@ require("termio").setup({
   -- Vim regex replacements as { pattern, replacement } pairs.
   read_replace_patterns = {},
   write_replace_patterns = {},
+  -- Lua pattern replacements. Changing commands are cleared with C-c instead of C-e C-u.
+  clear_interrupt_replace_patterns = { { "\\$", "" }, { "^> ", "" } },
   editor = {
     type = "integrated",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],

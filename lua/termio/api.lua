@@ -21,6 +21,27 @@ local function can_send_shell_integration_signal(buf)
 end
 
 ---@param target integer
+---@param win? integer
+---@param timeout_ms? integer
+---@param backend "auto"|"buffer"
+---@return { rows: string[], cursor: integer[]?, cursor_index: integer? }
+local function read_raw_state(target, win, timeout_ms, backend)
+  M.update_prompt_range(target)
+  local _, prompt_end_cursor = M.prompt_range(target)
+  if not prompt_end_cursor then
+    error("termio: missing prompt end cursor")
+  end
+  if backend == "auto" and can_send_shell_integration_signal(target) then
+    local shell_state = shell_integration.read_state(target, timeout_ms)
+    if shell_state then
+      return shell_state
+    end
+  end
+  win = win or helpers.visible_window(target)
+  return terminal_buffer.read_state(M.buffers, target, win, prompt_end_cursor)
+end
+
+---@param target integer
 ---@param keys string
 ---@param wait_for_render? boolean
 ---@return boolean
@@ -72,11 +93,7 @@ function M.cursor_index_in_command(win, buf)
   if not prompt_end_cursor then
     return nil
   end
-  return terminal_buffer.cursor_index_from_start_cursor(
-    vim.api.nvim_win_get_cursor(win),
-    target,
-    prompt_end_cursor
-  )
+  return terminal_buffer.read_state(M.buffers, target, win, prompt_end_cursor).cursor_index
 end
 
 ---Query the current shell command buffer.
@@ -101,21 +118,7 @@ function M.read_state(buf, win, timeout_ms, backend)
   if backend ~= "auto" and backend ~= "buffer" then
     error("termio: backend must be 'auto' or 'buffer'")
   end
-  M.update_prompt_range(target)
-  local _, prompt_end_cursor = M.prompt_range(target)
-  if not prompt_end_cursor then
-    error("termio: missing prompt end cursor")
-  end
-  if backend == "auto" and can_send_shell_integration_signal(target) then
-    local shell_state = shell_integration.read_state(target, timeout_ms)
-    if shell_state then
-      shell_state.command =
-        helpers.replace_patterns(shell_state.command, config.options.read_replace_patterns)
-      return shell_state
-    end
-  end
-  win = win or helpers.visible_window(target)
-  return terminal_buffer.read_state(M.buffers, target, win, prompt_end_cursor)
+  return helpers.normalize_state(read_raw_state(target, win, timeout_ms, backend))
 end
 
 ---Hide shell completion suggestions shown below the prompt.
@@ -130,12 +133,20 @@ end
 
 ---Clear the current shell command buffer.
 ---@param buf? integer
+---@param opts? { wait_for_render?: boolean }
 ---@return boolean
-function M.clear_command(buf)
+function M.clear_command(buf, opts)
+  opts = opts or {}
   local target = helpers.current_buf(buf)
   helpers.assert_terminal(target)
-  local cleared = send_clear_command(target, "<C-e><C-u>")
-  if not cleared then
+  local patterns = config.options.clear_interrupt_replace_patterns
+  local raw_state = read_raw_state(target, nil, nil, "buffer")
+  local command = table.concat(raw_state.rows, "")
+  local replaced_command = helpers.command_from_rows(raw_state.rows, patterns)
+  local use_interrupt = replaced_command ~= command
+  local cleared =
+    send_clear_command(target, use_interrupt and "<C-c>" or "<C-e><C-u>", opts.wait_for_render)
+  if not cleared and not use_interrupt then
     cleared = send_clear_command(target, "<C-c>")
   end
   if not cleared then
@@ -162,7 +173,7 @@ function M.write_command(command, buf, cursor)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
   local state = helpers.ensure_buffer_state(M.buffers, target)
   local can_signal_shell = can_send_shell_integration_signal(target)
-  send_clear_command(target, "<C-e><C-u>", false)
+  M.clear_command(target, { wait_for_render = false })
   helpers.send_bytes("\27[200~" .. shell_command .. "\27[201~", target)
   move_shell_cursor(target, shell_cursor, shell_command)
   if can_signal_shell then

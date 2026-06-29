@@ -269,6 +269,24 @@ T["integrated edit"]["submit runs command in normal mode and enters insert mode"
   Helpers.wait_for_mode(child, "t")
 end
 
+T["integrated edit"]["submit strips PS2 continuation prompt"] = function()
+  if vim.env.TERMIO_TEST_SHELL == "fish" then
+    MiniTest.skip("fish uses a different continuation prompt")
+  end
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo \\<CR>hello")
+  Helpers.wait_for_read_command(child, buf, "echo \\> hello")
+  Helpers.open_editable_normal_mode(child, buf)
+  child.api.nvim_input("<CR>")
+  Helpers.wait_until(child, function()
+    return child
+      .lua_get([[table.concat(vim.api.nvim_buf_get_lines(..., 0, -1, false), "\n")]], { buf })
+      :match("\nhello\n%$ ") ~= nil
+  end)
+end
+
 T["integrated edit"]["submit runs command in insert mode"] = function()
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")

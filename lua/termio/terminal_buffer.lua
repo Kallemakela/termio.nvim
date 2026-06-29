@@ -162,17 +162,16 @@ end
 ---@param buf integer
 ---@param win integer?
 ---@param prompt_end_cursor integer[]
----@return { command: string, cursor: integer? }
+---@return { rows: string[], cursor: integer[]?, cursor_index: integer? }
 function M.read_state(buffers, buf, win, prompt_end_cursor)
   local rows = M.command_rows(buf, prompt_end_cursor, true)
-  local state = helpers.ensure_buffer_state(buffers, buf)
-  local command = table.concat(rows, "")
   local cursor = win and vim.api.nvim_win_get_cursor(win) or nil
-  cursor = cursor and M.cursor_index_from_start_cursor(cursor, buf, prompt_end_cursor) or nil
-  state.shell_state.command =
-    helpers.replace_patterns(command, config.options.read_replace_patterns)
-  state.shell_state.cursor = cursor
-  return vim.deepcopy(state.shell_state)
+  local cursor_index = cursor and M.cursor_index_from_start_cursor(cursor, buf, prompt_end_cursor)
+  return {
+    rows = rows,
+    cursor = cursor,
+    cursor_index = cursor_index,
+  }
 end
 
 ---Return the cursor byte index inside command text.

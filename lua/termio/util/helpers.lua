@@ -64,6 +64,26 @@ function M.replace_patterns(command, patterns)
   return command
 end
 
+---@param rows string[]
+---@param patterns [string, string][]
+---@return string
+function M.command_from_rows(rows, patterns)
+  local replaced_rows = {}
+  for index, row in ipairs(rows) do
+    replaced_rows[index] = M.replace_patterns(row, patterns)
+  end
+  return table.concat(replaced_rows, "")
+end
+
+---@param raw_state { rows: string[], cursor_index: integer? }
+---@return { command: string, cursor: integer? }
+function M.normalize_state(raw_state)
+  return {
+    command = M.command_from_rows(raw_state.rows, config.options.read_replace_patterns),
+    cursor = raw_state.cursor_index,
+  }
+end
+
 ---@param buf? integer
 ---@return integer
 function M.current_buf(buf)
