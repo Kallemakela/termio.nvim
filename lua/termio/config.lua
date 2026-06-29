@@ -9,8 +9,6 @@ M.defaults = {
   timeouts = {
     -- Poll for terminal buffer render to catch up to writes.
     render_command = { limit_ms = 50, interval_ms = 2 },
-    -- Poll for :stopinsert to finish leaving terminal mode.
-    terminal_leave = { limit_ms = 10, interval_ms = 1 },
     -- Poll for shell integration to report the integrated command buffer.
     shell_query = { limit_ms = 50, interval_ms = 2 },
   },

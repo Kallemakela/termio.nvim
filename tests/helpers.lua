@@ -229,7 +229,6 @@ Helpers.setup_child = function(child, setup)
           -- TODO: Inspect why headless tests need a larger render timeout.
           render_command = { limit_ms = 500, interval_ms = 10 },
           shell_query = { limit_ms = 500, interval_ms = 10 },
-          terminal_leave = { limit_ms = 500, interval_ms = 10 },
         },
       }, %s, %s))
     ]],
