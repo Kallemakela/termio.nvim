@@ -96,6 +96,37 @@ function M.command_text(buf, start_cursor, stop_at_blank)
   return table.concat(M.command_rows(buf, start_cursor, stop_at_blank), "")
 end
 
+---@param buf integer
+---@param start_cursor integer[]?|fun(): integer[]?
+---@param command? string
+---@param stop_at_blank? boolean
+---@param opts? { allow_whitespace?: boolean }
+---@return boolean
+function M.wait_until_command_is_rendered(buf, start_cursor, command, stop_at_blank, opts)
+  if not command then
+    return true
+  end
+  local function is_rendered()
+    local cursor = type(start_cursor) == "function" and start_cursor() or start_cursor
+    if not cursor then
+      return false
+    end
+    local rendered_command = M.command_text(buf, cursor, stop_at_blank)
+    -- Currently just a special case for clearing command, could be generalized
+    if opts and opts.allow_whitespace and command == "" and rendered_command:match("^%s*$") then
+      rendered_command = ""
+    end
+    -- Avoid accepting empty text before the prompt row has rendered to start_col.
+    local line = vim.api.nvim_buf_get_lines(buf, cursor[1] - 1, cursor[1], false)[1] or ""
+    return #line >= cursor[2] and rendered_command == command
+  end
+  if is_rendered() then
+    return true
+  end
+  local timeout = config.options.timeouts.render_command
+  return vim.wait(timeout.limit_ms, is_rendered, timeout.interval_ms)
+end
+
 ---Unreliable, used only to check if there might be completions currently
 ---@param rows string[]
 ---@param position? integer[] Position relative to rows. Rows before it are always command rows.

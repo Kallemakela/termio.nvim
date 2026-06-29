@@ -20,6 +20,22 @@ local function can_send_shell_integration_signal(buf)
   return helpers.ensure_buffer_state(M.buffers, buf).active_prompt_source ~= "regex"
 end
 
+---@param target integer
+---@param keys string
+---@param wait_for_render? boolean
+---@return boolean
+local function send_clear_command(target, keys, wait_for_render)
+  helpers.send_keys(keys, target)
+  if wait_for_render == false then
+    return true
+  end
+  local rendered = terminal_buffer.wait_until_command_is_rendered(target, function()
+    -- <C-c> can create a new prompt while polling, so re-read cursor
+    return M.command_start_cursor(target)
+  end, "", true)
+  return rendered
+end
+
 ---Update cached prompt range from configured prompt patterns.
 ---@param buf? integer
 function M.update_prompt_range(buf)
@@ -112,6 +128,26 @@ function M.clear_completion_suggestions(buf)
   end
 end
 
+---Clear the current shell command buffer.
+---@param buf? integer
+---@return boolean
+function M.clear_command(buf)
+  local target = helpers.current_buf(buf)
+  helpers.assert_terminal(target)
+  local cleared = send_clear_command(target, "<C-e><C-u>")
+  if not cleared then
+    cleared = send_clear_command(target, "<C-c>")
+  end
+  if not cleared then
+    vim.notify("termio: failed to clear command", vim.log.levels.WARN)
+    return false
+  end
+  local state = helpers.ensure_buffer_state(M.buffers, target)
+  state.shell_state.command = ""
+  state.shell_state.cursor = 0
+  return true
+end
+
 ---Write shell command buffer directly.
 ---@param command string
 ---@param buf? integer
@@ -126,7 +162,7 @@ function M.write_command(command, buf, cursor)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
   local state = helpers.ensure_buffer_state(M.buffers, target)
   local can_signal_shell = can_send_shell_integration_signal(target)
-  helpers.send_keys("<C-e><C-u>", target)
+  send_clear_command(target, "<C-e><C-u>", false)
   helpers.send_bytes("\27[200~" .. shell_command .. "\27[201~", target)
   move_shell_cursor(target, shell_cursor, shell_command)
   if can_signal_shell then

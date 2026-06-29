@@ -93,4 +93,26 @@ T["write_command()"]["empty command after cursor stays empty"] = function()
   Helpers.wait_for_read_command(child, buf, "")
 end
 
+T["clear_command()"] = MiniTest.new_set()
+
+T["clear_command()"]["clears current command"] = function()
+  local buf = Helpers.open_shell(child)
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo hello")
+  Helpers.wait_for_read_command(child, buf, "echo hello")
+  child.lua([[require("termio").clear_command(...)]], { buf })
+  Helpers.wait_for_read_command(child, buf, "")
+end
+
+T["clear_command()"]["clears zsh continuation command"] = function()
+  local buf = Helpers.open_shell(child, nil, "zsh")
+  child.api.nvim_input("i")
+  Helpers.wait_for_mode(child, "t")
+  child.api.nvim_input("echo \\<CR>hello \\<CR>world")
+  Helpers.wait_for_read_command(child, buf, "echo \\> hello \\> world")
+  child.lua([[require("termio").clear_command(...)]], { buf })
+  Helpers.wait_for_read_command(child, buf, "")
+end
+
 return T

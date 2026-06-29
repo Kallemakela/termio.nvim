@@ -53,31 +53,12 @@ local function read_editor_state(buf, win)
   }
 end
 
-local function is_prompt_rendered(buf)
-  local cursor = api.command_start_cursor(buf)
-  if not cursor then
-    return false
-  end
-  local line = vim.api.nvim_buf_get_lines(buf, cursor[1] - 1, cursor[1], false)[1] or ""
-  return #line >= cursor[2]
-end
-
-local function is_command_rendered(buf, command)
-  return is_prompt_rendered(buf) and M.read_command_from_buffer(buf) == command
-end
-
 ---Wait for integrated text to match shell state after query/write markers.
 ---Bash readline redraw can arrive after the marker that updates shell state.
 ---@param buf integer
 ---@param command? string
 local function wait_until_command_is_rendered(buf, command)
-  if not command or is_command_rendered(buf, command) then
-    return
-  end
-  local timeout = config.options.timeouts.render_command
-  vim.wait(timeout.limit_ms, function()
-    return is_command_rendered(buf, command)
-  end, timeout.interval_ms)
+  terminal_buffer.wait_until_command_is_rendered(buf, api.command_start_cursor(buf), command)
 end
 
 local function is_position_after(row, col, target)

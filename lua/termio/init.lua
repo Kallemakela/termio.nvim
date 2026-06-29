@@ -10,6 +10,7 @@ local M = {
   read_command = api.read_command,
   update_prompt_range = api.update_prompt_range,
   prompt_range = api.prompt_range,
+  clear_command = api.clear_command,
   write_command = api.write_command,
   command_start_cursor = api.command_start_cursor,
   cursor_index_in_command = api.cursor_index_in_command,
