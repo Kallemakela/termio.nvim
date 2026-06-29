@@ -62,25 +62,26 @@ end
 
 local function test_shell_command(shell)
   local repo_root = vim.fn.fnamemodify(root, ":h")
+  local shell_fixtures = repo_root .. "/fixtures/shell"
   local commands = {
     zsh = shell_command({
-      env = { "env", "ZDOTDIR=" .. repo_root .. "/zsh-test", "TERMIO_REPO_ROOT=" .. repo_root },
+      env = { "env", "ZDOTDIR=" .. shell_fixtures .. "/zsh", "TERMIO_REPO_ROOT=" .. repo_root },
       shell = shell,
       argv = { "-d", "-i" },
     }),
     bash = shell_command({
       env = {
         "env",
-        "BASH_ENV=" .. repo_root .. "/bash-test/env",
+        "BASH_ENV=" .. shell_fixtures .. "/bash/env",
         "TERMIO_REPO_ROOT=" .. repo_root,
       },
       shell = shell,
-      argv = { "--rcfile", repo_root .. "/bash-test/env", "-i" },
+      argv = { "--rcfile", shell_fixtures .. "/bash/env", "-i" },
     }),
     fish = shell_command({
       env = {
         "env",
-        "XDG_CONFIG_HOME=" .. repo_root .. "/fish-test",
+        "XDG_CONFIG_HOME=" .. shell_fixtures,
         "TERMIO_REPO_ROOT=" .. repo_root,
       },
       shell = shell,

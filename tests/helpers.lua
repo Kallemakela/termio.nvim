@@ -1,9 +1,10 @@
 -- imported from https://github.com/echasnovski/mini.nvim
 local Helpers = {}
 local test_root = vim.fn.fnamemodify(debug.getinfo(1, "S").source:sub(2), ":h:h")
-local test_zdotdir = test_root .. "/zsh-test"
-local test_bash_env = test_root .. "/bash-test/env"
-local test_fish_config = test_root .. "/fish-test"
+local shell_fixtures = test_root .. "/fixtures/shell"
+local test_zdotdir = shell_fixtures .. "/zsh"
+local test_bash_env = shell_fixtures .. "/bash/env"
+local test_fish_config = shell_fixtures
 
 local function test_backend_option()
   if not vim.env.TERMIO_TEST_BACKEND or vim.env.TERMIO_TEST_BACKEND == "" then

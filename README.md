@@ -11,13 +11,17 @@ Edit the terminal like any other text with minimal latency.
 
 Provides a read/write API + a bundled 'editor' for the terminal buffer.
 Set `editor = nil` to only load the API.
-Currently supports zsh and bash.
+Currently supports zsh, bash, and fish.
 It is easy to add support for other shells as well if needed.
 
 
 ## Setup
 
 ### Shell
+
+> [!NOTE]
+> Currently not auto-loading shell integration because it seems a bit invasive.
+> The integration scripts force Emacs/default shell key bindings in terminals where they are active.
 
 <details>
 <summary>Zsh</summary>
@@ -32,9 +36,6 @@ fi
 
 </details>
 
-> [!NOTE]
-> `termio.nvim` does not auto-load shell integration because it is complex and insecure.
-
 <details>
 <summary>Bash</summary>
 
@@ -44,6 +45,19 @@ Load [bash integration script](./shell/termio.bash) on startup, e.g. in `~/.bash
 if [ -n "$NVIM" ]; then
   source "$HOME/code/nvim/termio.nvim/shell/termio.bash"
 fi
+```
+
+</details>
+
+<details>
+<summary>Fish</summary>
+
+Load [fish integration script](./shell/termio.fish) on startup, e.g. in `~/.config/fish/config.fish`:
+
+```fish
+if set -q NVIM
+  source "$HOME/code/nvim/termio.nvim/shell/termio.fish"
+end
 ```
 
 </details>
@@ -97,7 +111,7 @@ require("termio").setup({
   clear_interrupt_replace_patterns = { { "\\$", "" }, { "^> ", "" } },
   editor = {
     type = "integrated",
-    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],
+    terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     open = "<Esc>",
     is_disabled = function(buf)
       -- Example, assuming you track if TUI active in terminal

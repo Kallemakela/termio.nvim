@@ -1,8 +1,8 @@
 local M = {}
 
 local function timestamp()
-  return vim.fn.strftime("%H:%M:%S")
-    .. string.format(".%03d", math.floor((vim.loop.hrtime() / 1e6) % 1000))
+  local seconds, microseconds = vim.loop.gettimeofday()
+  return os.date("%H:%M:%S", seconds) .. string.format(".%03d", math.floor(microseconds / 1000))
 end
 
 local function append_log(line, history, verbose)

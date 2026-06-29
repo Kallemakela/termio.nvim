@@ -6,6 +6,9 @@ fi
 
 TERMIO_SHELL_INTEGRATION_LOADED=1
 
+# Termio clears commands with Emacs readline controls like C-e C-u.
+bindkey -e
+
 # Termio writes via bracketed paste; avoid ZLE's pasted-text highlight.
 zle_highlight+=(paste:none)
 

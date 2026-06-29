@@ -4,6 +4,9 @@ end
 
 set -g TERMIO_SHELL_INTEGRATION_LOADED 1
 
+# Termio clears commands with Emacs-style controls like C-e C-u.
+fish_default_key_bindings
+
 # Termio writes via bracketed paste; avoid fish selection-style paste highlight.
 set -g fish_color_selection normal
 
