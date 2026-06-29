@@ -54,6 +54,11 @@ function M.send_keys(keys, buf)
   M.send_bytes(M.term_codes(keys), buf)
 end
 
+---@param buf? integer
+function M.clear_command_line(buf)
+  M.send_keys("<C-e><C-u>", buf)
+end
+
 ---@param command string
 ---@param patterns [string, string][]
 ---@return string

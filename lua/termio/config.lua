@@ -41,6 +41,32 @@ M.defaults = {
         ["<M-t>"] = "toggle",
       },
     },
+    popup = {
+      open_on_prompt = false,
+      keys = {
+        i = {
+          ["<CR>"] = "submit",
+          ["<C-u>"] = "clear",
+          ["<C-s>"] = "write",
+        },
+        n = {
+          ["q"] = "close",
+          ["j"] = "down",
+          ["k"] = "up",
+        },
+        x = {
+          ["j"] = "down",
+          ["k"] = "up",
+        },
+        o = {
+          ["j"] = "down",
+          ["k"] = "up",
+        },
+      },
+      pass_through_insert_keys = { "<Up>", "<Tab>" },
+      pass_through_normal_keys = { "}", "<C-d>", "<C-b>", "G", "L", "/", "?", "n", "N" },
+      pass_through_normal_keys_first_line = { "{", "<C-u>", "gg", "H" },
+    },
   },
   debug = false,
 }

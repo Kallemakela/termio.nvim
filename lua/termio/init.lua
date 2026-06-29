@@ -22,8 +22,12 @@ local function load_editor()
     return nil
   elseif editor == "integrated" then
     return require("termio.editors.integrated")
+  elseif editor == "minimal" then
+    return require("termio.editors.minimal")
+  elseif editor == "overlay" then
+    return require("termio.editors.overlay")
   end
-  error("termio: config.editor.type must be nil or 'integrated'")
+  error("termio: config.editor.type must be nil, 'integrated', 'minimal', or 'overlay'")
 end
 
 ---Enable termio integrations and reload enabled-only editor resources.

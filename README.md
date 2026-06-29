@@ -110,7 +110,7 @@ require("termio").setup({
   -- Lua pattern replacements. Changing commands are cleared with C-c instead of C-e C-u.
   clear_interrupt_replace_patterns = { { "\\$", "" }, { "^> ", "" } },
   editor = {
-    type = "integrated",
+    type = "integrated", -- "integrated" | "minimal" | "overlay" | nil
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash|fish)( |$)]],
     open = "<Esc>",
     is_disabled = function(buf)
@@ -134,6 +134,26 @@ require("termio").setup({
         ["<Esc>"] = "save_and_close",
         ["<M-t>"] = "toggle",
       },
+    },
+    overlay = {
+      open_on_prompt = false,
+      keys = {
+        n = {
+          q = "close",
+          j = "down",
+          k = "up",
+        },
+        i = {
+          ["<CR>"] = "submit",
+          ["<C-u>"] = "clear",
+          ["<C-s>"] = "write",
+        },
+        x = { j = "down", k = "up" },
+        o = { j = "down", k = "up" },
+      },
+      pass_through_insert_keys = { "<Up>", "<Tab>" },
+      pass_through_normal_keys = { "}", "<C-d>", "<C-b>", "G", "L" },
+      pass_through_normal_keys_first_line = { "{", "<C-u>", "gg", "H" },
     },
   },
   -- true: vim.notify debug events. function(event, data): custom logger.
@@ -202,7 +222,11 @@ termio.nvim/
 │   ├── state.lua                plugin state storage
 │   ├── shell_state.lua          OSC marker state updates
 │   ├── editors/                 bundled terminal-buffer editors
-│   │   └── integrated.lua         default integrated-buffer editor
+│   │   ├── integrated.lua         default integrated-buffer editor
+│   │   ├── minimal.lua            scratch-buffer editor
+│   │   ├── overlay.lua            floating prompt-buffer editor
+│   │   ├── autoresize.lua         editor window resizing helpers
+│   │   └── fixbuf.lua             fixed editor window helpers
 │   ├── shell_integration/       shell marker and key-hook integration
 │   │   ├── init.lua             shell integration dispatch
 │   │   ├── zsh.lua              zsh integration
