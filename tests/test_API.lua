@@ -47,13 +47,15 @@ T["read_command()"]["starts directly after OSC133;B cursor col"] = function()
   )
 end
 
-T["read_command()"]["applies configured read strip patterns"] = function()
-  child.lua([[require("termio.config").options.read_strip_patterns = { "%s+$" }]])
+T["read_command()"]["applies configured read replace patterns"] = function()
+  child.lua(
+    [[require("termio.config").options.read_replace_patterns = { { "%s+$", "" }, { "keep", "read" } }]]
+  )
   local buf = Helpers.open_shell(child)
   child.api.nvim_input("i")
   Helpers.wait_for_mode(child, "t")
   child.api.nvim_input("echo keep   ")
-  Helpers.wait_for_read_command(child, buf, "echo keep")
+  Helpers.wait_for_read_command(child, buf, "echo read")
 end
 
 T["read_command()"]["detects default Python REPL prompt regex"] = function()

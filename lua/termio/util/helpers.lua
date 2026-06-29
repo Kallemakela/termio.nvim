@@ -55,22 +55,13 @@ function M.send_keys(keys, buf)
 end
 
 ---@param command string
----@param patterns string[]
----@param replacement? string
+---@param patterns [string, string][]
 ---@return string
-function M.strip_patterns(command, patterns, replacement)
-  replacement = replacement or ""
-  for _, pattern in ipairs(patterns) do
-    command = command:gsub(pattern, replacement)
+function M.replace_patterns(command, patterns)
+  for _, replacement in ipairs(patterns) do
+    command = command:gsub(replacement[1], replacement[2])
   end
   return command
-end
-
----@param command string
----@param patterns string[]
----@return string
-function M.normalize_command(command, patterns)
-  return M.strip_patterns(command, patterns, "\n"):gsub("\n$", "")
 end
 
 ---@param buf? integer

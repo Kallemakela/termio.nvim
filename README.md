@@ -90,8 +90,9 @@ Defaults live in `lua/termio/config.lua`.
 require("termio").setup({
   -- Vim regexes. Command text starts after the matched prompt.
   prompt_patterns = { [[^>>> ]], [[^\.\.\. ]] },
-  read_strip_patterns = {},
-  write_strip_patterns = { "\n" },
+  -- Vim regex replacements as { pattern, replacement } pairs.
+  read_replace_patterns = {},
+  write_replace_patterns = {},
   editor = {
     type = "integrated",
     terminal_name_pattern = [[\v(:| )(/[^ ]*/)?(zsh|bash)( |$)]],

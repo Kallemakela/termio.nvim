@@ -110,7 +110,7 @@ function M.read_state(buf, win, timeout_ms, backend)
     local shell_state = shell_integration.read_state(target, timeout_ms)
     if shell_state then
       shell_state.command =
-        helpers.strip_patterns(shell_state.command, config.options.read_strip_patterns)
+        helpers.replace_patterns(shell_state.command, config.options.read_replace_patterns)
       return shell_state
     end
   end
@@ -158,7 +158,7 @@ function M.write_command(command, buf, cursor)
   if type(command) ~= "string" then
     error("termio: command must be a string")
   end
-  local shell_command = helpers.strip_patterns(command, config.options.write_strip_patterns)
+  local shell_command = helpers.replace_patterns(command, config.options.write_replace_patterns)
   local shell_cursor = cursor and math.max(0, math.min(cursor, #shell_command)) or #shell_command
   local state = helpers.ensure_buffer_state(M.buffers, target)
   local can_signal_shell = can_send_shell_integration_signal(target)
